@@ -7,202 +7,221 @@
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: #060911;
-  font-family: "Courier New", monospace;
-  width: 100%;
-  height: 100%;
-}
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #05070c;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
 
-/* Wrapper layer ensures the canvas has a real structural parent box to read bounds from */
-.sim-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
+  /* Structural map layer wrapper */
+  .map-viewport {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    overflow: hidden;
+  }
 
-#sim {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+  #sim {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
 
-.glass {
-  backdrop-filter: blur(12px);
-  background: rgba(9, 13, 22, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  box-shadow: 0 0 35px rgba(0,0,0,0.7);
-}
+  /* HUD glass panels */
+  .glass-panel {
+    backdrop-filter: blur(16px);
+    background: rgba(10, 15, 26, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  }
 
-.hud-title {
-  color: #f59e0b;
-  letter-spacing: 1px;
-}
+  .hud-amber { color: #f59e0b; text-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
+  
+  input[type="range"] {
+    width: 100%;
+    accent-color: #f59e0b;
+    cursor: pointer;
+  }
 
-input[type="range"] {
-  width: 100%;
-  accent-color: #f59e0b;
-}
+  .unit-btn {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .unit-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .unit-btn.active {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.1);
+  }
 
-.unit-btn.active {
-  border-color: #f59e0b;
-  background: rgba(245,158,11,0.2);
-}
+  /* Custom clean scrollbar for logistics log */
+  .custom-scroll::-webkit-scrollbar { width: 4px; }
+  .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+  .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
-.ui-layer {
-  z-index: 20;
-  pointer-events: auto;
-}
+  /* Interactive safety shield protecting canvas from UI mouse tracking */
+  .ui-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .ui-interactive {
+    pointer-events: auto;
+  }
 </style>
 </head>
 <body>
 
-<div class="sim-container">
+<div class="map-viewport">
   <canvas id="sim"></canvas>
 </div>
 
-<div class="absolute top-0 left-0 right-0 h-24 glass flex items-center px-6 text-slate-200 justify-between ui-layer">
-  <div class="flex items-center space-x-4">
-    <div>
-      <div class="text-xl font-bold hud-title">INCIDENT COMMANDER: AUSTRALIA</div>
-      <div class="text-xs text-slate-400">STATE INCIDENT CONTROL CENTRE | AIIMS ENGINE v3.0</div>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-5 gap-6 w-2/3 text-xs">
-    <div>
-      <div class="flex justify-between"><span>Wind Speed</span><span id="windSpeedVal" class="text-amber-400 font-bold">35</span><span class="text-slate-500">km/h</span></div>
-      <input id="windSpeed" type="range" min="0" max="100" value="35">
-    </div>
-
-    <div>
-      <div class="flex justify-between"><span>Wind Direction</span><span id="windDirVal" class="text-cyan-400 font-bold">45</span><span class="text-slate-500">°</span></div>
-      <input id="windDir" type="range" min="0" max="360" value="45">
-    </div>
-
-    <div>
-      <div class="flex justify-between"><span>Temperature</span><span id="tempVal" class="text-orange-400 font-bold">38</span><span class="text-slate-500">°C</span></div>
-      <input id="temperature" type="range" min="15" max="45" value="38">
-    </div>
-
-    <div>
-      <div class="flex justify-between"><span>Humidity</span><span id="humidityVal" class="text-blue-400 font-bold">12</span><span class="text-slate-500">%</span></div>
-      <input id="humidity" type="range" min="5" max="80" value="12">
-    </div>
-
-    <div class="flex flex-col justify-center items-end border-l border-slate-700/50 pl-4">
-      <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Fire Danger Rating</div>
-      <div id="fdiDisplay" class="text-3xl font-black text-red-500 tracking-tighter">EXTREME</div>
-    </div>
-  </div>
-</div>
-
-<div class="absolute top-28 left-1/2 -translate-x-1/2 glass px-4 py-1.5 rounded-full text-[11px] text-slate-400 font-semibold uppercase tracking-wider border border-slate-700/30 ui-layer">
-  Mouse Left-Click = Interact | Mousewheel = Zoom | Right-Click Drag = Pan Tactical Map
-</div>
-
-<div class="absolute top-28 left-4 w-80 glass rounded-2xl p-4 text-slate-200 space-y-4 ui-layer">
-  <div>
-    <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">ENVIRONMENTAL PROFILE</div>
-    <div class="mb-3 text-xs">
-      <div class="flex justify-between mb-1"><span>Fuel Load</span><span id="fuelLoadVal" class="font-bold text-amber-500">18</span><span class="text-slate-500">t/ha</span></div>
-      <input id="fuelLoad" type="range" min="5" max="35" value="18">
-    </div>
-    <div class="text-xs">
-      <div class="flex justify-between mb-1"><span>Grass Curing</span><span id="curingVal" class="font-bold text-amber-500">85</span><span class="text-slate-500">%</span></div>
-      <input id="curing" type="range" min="0" max="100" value="85">
-    </div>
-  </div>
-
-  <div>
-    <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">TACTICAL IGNITION</div>
-    <div class="grid grid-cols-2 gap-2 text-xs">
-      <button id="pointIgnition" class="bg-orange-800/40 hover:bg-orange-700/60 border border-orange-500/40 rounded-lg p-2 font-bold transition-all text-orange-300">Point Ignition</button>
-      <button id="lineIgnition" class="bg-red-900/40 hover:bg-red-800/60 border border-red-500/40 rounded-lg p-2 font-bold transition-all text-red-300">Lightning Strike</button>
-    </div>
-  </div>
-
-  <div>
-    <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">RESOURCE DISPATCH (AIIMS)</div>
-    <div class="grid grid-cols-2 gap-2 text-xs">
-      <button data-unit="striker" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
-        <span class="font-bold block text-sky-400">Light Unit</span>
-        <span class="text-[10px] text-slate-400 block mt-0.5">Striker - Quick Attack</span>
-      </button>
-      <button data-unit="tanker" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
-        <span class="font-bold block text-red-400">Heavy Tanker</span>
-        <span class="text-[10px] text-slate-400 block mt-0.5">Cat 1 Heavy Appliance</span>
-      </button>
-      <button data-unit="dozer" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
-        <span class="font-bold block text-amber-400">Bulldozer</span>
-        <span class="text-[10px] text-slate-400 block mt-0.5">Heavy Firebreak Line</span>
-      </button>
-      <button data-unit="bomber" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
-        <span class="font-bold block text-purple-400">Fixed Wing</span>
-        <span class="text-[10px] text-slate-400 block mt-0.5">Retardant Drop Run</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="absolute top-28 right-4 w-80 glass rounded-2xl p-4 text-slate-200 space-y-4 ui-layer">
-  <div>
-    <div class="hud-title font-bold text-sm border-b border-slate-700/50 pb-1 mb-3">INCIDENT MONITOR</div>
-    <table class="w-full text-xs space-y-2">
-      <tr class="h-8 border-b border-slate-800/50">
-        <td class="text-slate-400 font-medium">Total Affected Area</td>
-        <td class="text-right font-bold text-orange-400 text-sm" id="burnArea">0.0 ha</td>
-      </tr>
-      <tr class="h-8 border-b border-slate-800/50">
-        <td class="text-slate-400 font-medium">Contained Line</td>
-        <td class="text-right font-bold text-emerald-400 text-sm" id="containedPct">100%</td>
-      </tr>
-      <tr class="h-8">
-        <td class="text-slate-400 font-medium">Active Fleet Assets</td>
-        <td class="text-right font-bold text-cyan-400 text-sm" id="unitCount">0 Available</td>
-      </tr>
-    </table>
-  </div>
+<div class="ui-container">
   
-  <div class="border-t border-slate-700/50 pt-2">
-    <div class="text-[10px] uppercase text-slate-400 font-bold mb-2">Resource Status Logistics Log</div>
-    <div id="logisticsLog" class="h-32 overflow-y-auto text-[10px] text-slate-500 space-y-1 pr-1 font-mono">
-      <div>[SYSTEM] Topology verification active. Simulation ready.</div>
+  <div class="absolute top-0 left-0 right-0 h-24 glass-panel flex items-center px-6 text-slate-200 justify-between ui-interactive">
+    <div>
+      <div class="text-xl font-black hud-amber tracking-wider">INCIDENT COMMANDER: AUSTRALIA</div>
+      <div class="text-[10px] tracking-widest text-slate-400 font-bold uppercase mt-0.5">National Wildfire Simulation Matrix Engine v3.5</div>
+    </div>
+
+    <div class="grid grid-cols-5 gap-6 w-2/3 text-xs ml-12">
+      <div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Speed</span><span id="windSpeedVal" class="text-amber-400 font-mono font-bold">35</span><span class="text-slate-500">km/h</span></div>
+        <input id="windSpeed" type="range" min="0" max="100" value="35">
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Direction</span><span id="windDirVal" class="text-cyan-400 font-mono font-bold">45</span><span class="text-slate-500">°</span></div>
+        <input id="windDir" type="range" min="0" max="360" value="45">
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Temperature</span><span id="tempVal" class="text-orange-400 font-mono font-bold">38</span><span class="text-slate-500">°C</span></div>
+        <input id="temperature" type="range" min="15" max="45" value="38">
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Humidity</span><span id="humidityVal" class="text-blue-400 font-mono font-bold">12</span><span class="text-slate-500">%</span></div>
+        <input id="humidity" type="range" min="5" max="80" value="12">
+      </div>
+
+      <div class="flex flex-col justify-center items-end border-l border-slate-800 pl-6">
+        <div class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Fire Danger Index</div>
+        <div id="fdiDisplay" class="text-2xl font-black text-red-500 tracking-tighter">CATASTROPHIC</div>
+      </div>
     </div>
   </div>
+
+  <div class="absolute top-28 left-1/2 -translate-x-1/2 glass-panel px-5 py-2 rounded-full text-[11px] text-slate-300 font-semibold uppercase tracking-wider border border-slate-800/80">
+    <span class="text-amber-400 font-bold">Left Click:</span> Apply Action | <span class="text-cyan-400 font-bold">Mousewheel:</span> Zoom Map | <span class="text-emerald-400 font-bold">Right Click + Drag:</span> Pan Map
+  </div>
+
+  <div class="absolute top-28 left-4 w-80 glass-panel rounded-2xl p-4 text-slate-200 space-y-4 ui-interactive">
+    <div>
+      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Environmental Profile</div>
+      <div class="mb-3 text-xs">
+        <div class="flex justify-between mb-1 text-slate-400"><span>Fuel Load</span><span id="fuelLoadVal" class="font-mono font-bold text-amber-500">18</span><span class="text-slate-500">t/ha</span></div>
+        <input id="fuelLoad" type="range" min="5" max="35" value="18">
+      </div>
+      <div class="text-xs">
+        <div class="flex justify-between mb-1 text-slate-400"><span>Grass Curing</span><span id="curingVal" class="font-mono font-bold text-amber-500">85</span><span class="text-slate-500">%</span></div>
+        <input id="curing" type="range" min="0" max="100" value="85">
+      </div>
+    </div>
+
+    <div>
+      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Tactical Ignition Matrix</div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <button id="pointIgnition" class="bg-orange-950/40 hover:bg-orange-900/40 border border-orange-500/30 text-orange-400 rounded-xl py-2.5 font-bold transition-all">Point Ignition</button>
+        <button id="lineIgnition" class="bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-400 rounded-xl py-2.5 font-bold transition-all">Lightning Strike</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Resource Dispatch (AIIMS)</div>
+      <div class="grid grid-cols-1 gap-2 text-xs">
+        <button data-unit="striker" class="unit-btn rounded-xl p-3 text-left">
+          <span class="font-bold block text-sky-400">Light Attack Unit</span>
+          <span class="text-[10px] text-slate-400 block mt-0.5">Striker Appliance - Fast Maneuver Suppression</span>
+        </button>
+        <button data-unit="tanker" class="unit-btn rounded-xl p-3 text-left">
+          <span class="font-bold block text-red-400">Heavy Tanker Unit</span>
+          <span class="text-[10px] text-slate-400 block mt-0.5">Cat 1 Appliance - High Capacity Suppression Line</span>
+        </button>
+        <button data-unit="dozer" class="unit-btn rounded-xl p-3 text-left">
+          <span class="font-bold block text-amber-400">Heavy Plant (Bulldozer)</span>
+          <span class="text-[10px] text-slate-400 block mt-0.5">Establishes Concrete Defensible Firebreaks</span>
+        </button>
+        <button data-unit="bomber" class="unit-btn rounded-xl p-3 text-left">
+          <span class="font-bold block text-purple-400">Fixed Wing Air Tanker</span>
+          <span class="text-[10px] text-slate-400 block mt-0.5">Deploys Retardant Drop Paths from High Altitude</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute top-28 right-4 w-85 glass-panel rounded-2xl p-4 text-slate-200 space-y-4 ui-interactive">
+    <div>
+      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Incident Operational Monitor</div>
+      <table class="w-full text-xs">
+        <tr class="h-9 border-b border-slate-900">
+          <td class="text-slate-400 font-medium">Total Affected Area</td>
+          <td class="text-right font-mono font-bold text-orange-400 text-sm" id="burnArea">0.0 ha</td>
+        </tr>
+        <tr class="h-9 border-b border-slate-900">
+          <td class="text-slate-400 font-medium">Contained Safety Perimeter</td>
+          <td class="text-right font-mono font-bold text-emerald-400 text-sm" id="containedPct">100%</td>
+        </tr>
+        <tr class="h-9">
+          <td class="text-slate-400 font-medium">Active Deployed Fleet</td>
+          <td class="text-right font-mono font-bold text-cyan-400 text-sm" id="unitCount">0 Units</td>
+        </tr>
+      </table>
+    </div>
+    
+    <div>
+      <div class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1.5">SICC Communications Log</div>
+      <div id="logisticsLog" class="h-44 overflow-y-auto text-[10px] text-slate-400 space-y-1.5 pr-1 font-mono custom-scroll">
+        <div>[SYSTEM] Core map processing engine initialization verified. Grid standing by.</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
 const canvas = document.getElementById("sim");
-const ctx = canvas.getContext("2d");
-
-// Fallback logic protection: Checks client bounds; if browser surfaces zero, safely matches viewport size
-function resize() {
-  canvas.width = canvas.parentElement.clientWidth || window.innerWidth || 1920;
-  canvas.height = canvas.parentElement.clientHeight || window.innerHeight || 1080;
-}
-resize();
-window.addEventListener("resize", resize);
-window.addEventListener("load", () => {
-  resize();
-  pushLog("Viewport matrix fully locked and verified.");
-});
+const ctx = canvas.getContext("2d", { alpha: false });
 
 const GRID = 100; 
-const cellSize = 24; 
+const cellSize = 32; // Crisp sizing footprint to easily target tactical grid sectors
 const worldW = GRID * cellSize;
 const worldH = GRID * cellSize;
 
-// Force explicit, centralized screen offsets
-const camera = { x: worldW / 2, y: worldH / 2, zoom: 0.5 };
-let dragging = false; let dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
+// Global projection camera mapping engine parameters
+const camera = { x: worldW / 2, y: worldH / 2, zoom: 0.45 };
+let dragging = false; 
+let dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
 
+// Dynamic, absolute matrix coordinate conversion functions
 function worldToScreen(wx, wy) {
   return {
     x: (wx - camera.x) * camera.zoom + (canvas.width / 2),
@@ -217,31 +236,58 @@ function screenToWorld(sx, sy) {
   };
 }
 
+// Crisp display layout handling to protect engine canvas bounds from dropping to 0
+function handleEngineResize() {
+  const container = canvas.parentElement;
+  const displayW = container.clientWidth || window.innerWidth;
+  const displayH = container.clientHeight || window.innerHeight;
+  
+  if (canvas.width !== displayW || canvas.height !== displayH) {
+    canvas.width = displayW;
+    canvas.height = displayH;
+    ctx.imageSmoothingEnabled = false;
+  }
+}
+handleEngineResize();
+window.addEventListener("resize", handleEngineResize);
+
+// Core Data Matrices
 const grid = [];
 const waterSources = [];
-
 const weather = { windSpeed: 35, windDir: 45, temperature: 38, humidity: 12 };
 const fuels = { fuelLoad: 18, curing: 85 };
+const units = [];
 
-// Map data instantiation
+// Unit template specifications
+const unitTemplates = {
+  striker: { speed: 1.6, waterMax: 600, suppression: 0.5, color: "#38bdf8", label: "Light Unit" },
+  tanker: { speed: 0.9, waterMax: 4000, suppression: 0.9, color: "#ef4444", label: "Heavy Tanker" },
+  dozer: { speed: 0.4, waterMax: 0, suppression: 0.6, color: "#facc15", label: "Bulldozer Plant" },
+  bomber: { speed: 4.2, waterMax: 5000, suppression: 2.5, color: "#c084fc", label: "Air Tanker" }
+};
+
+let currentTool = "ignite";
+let currentUnitType = null;
+
+// Populate simulation topography matrices
 for (let y = 0; y < GRID; y++) {
   const row = [];
   for (let x = 0; x < GRID; x++) {
-    const baseElevation = 100 + 
-      Math.sin(x * 0.15) * Math.cos(y * 0.15) * 50 + 
-      Math.sin(x * 0.3) * 10;
+    // Generate complex landscape elevation lines
+    const baseElevation = 80 + 
+      Math.sin(x * 0.12) * Math.cos(y * 0.12) * 55 + 
+      Math.sin(x * 0.3) * 12;
 
+    // Build functional water catchment boundaries
     let isWater = false;
-    if ((x > 12 && x < 28 && y > 15 && y < 32) || 
-        (x > 70 && x < 88 && y > 60 && y < 78) ||
-        (x > 20 && x < 35 && y > 65 && y < 80)) {
+    if ((x > 15 && x < 28 && y > 15 && y < 28) || 
+        (x > 68 && x < 82 && y > 62 && y < 76) ||
+        (x > 18 && x < 32 && y > 68 && y < 82)) {
       isWater = true;
     }
     
     let state = isWater ? "water" : "unburnt";
-    if (isWater) {
-      waterSources.push({ x: x, y: y });
-    }
+    if (isWater) waterSources.push({ x, y });
 
     row.push({
       x, y,
@@ -259,8 +305,8 @@ function pushLog(text) {
   const logBox = document.getElementById("logisticsLog");
   if (!logBox) return;
   const timeStr = new Date().toTimeString().split(' ')[0];
-  logBox.innerHTML = `<div>[${timeStr}] ${text}</div>` + logBox.innerHTML;
-  if(logBox.children.length > 25) logBox.removeChild(logBox.lastChild);
+  logBox.innerHTML = `<div class="text-slate-300"><span class="text-slate-500">[${timeStr}]</span> ${text}</div>` + logBox.innerHTML;
+  if(logBox.children.length > 30) logBox.removeChild(logBox.lastChild);
 }
 
 function bindInput(id, obj, key, valId) {
@@ -281,31 +327,20 @@ bindInput("fuelLoad", fuels, "fuelLoad", "fuelLoadVal");
 bindInput("curing", fuels, "curing", "curingVal");
 
 function calculateFDI() {
-  return Math.round((weather.temperature * 1.6) + (weather.windSpeed * 1.1) + (100 - weather.humidity) * 0.7);
+  return Math.round((weather.temperature * 1.5) + (weather.windSpeed * 1.2) + (100 - weather.humidity) * 0.8);
 }
 
 function updateFDIUI() {
   const fdi = calculateFDI();
   const display = document.getElementById("fdiDisplay");
   if(!display) return;
-  if (fdi < 12) { display.textContent = "LOW"; display.className = "text-3xl font-black text-green-500"; }
-  else if (fdi < 24) { display.textContent = "MODERATE"; display.className = "text-3xl font-black text-blue-400"; }
-  else if (fdi < 50) { display.textContent = "HIGH"; display.className = "text-3xl font-black text-yellow-500"; }
-  else if (fdi < 100) { display.textContent = "EXTREME"; display.className = "text-3xl font-black text-orange-500"; }
-  else { display.textContent = "CATASTROPHIC"; display.className = "text-3xl font-black text-red-600 animate-pulse"; }
+  if (fdi < 15) { display.textContent = "LOW"; display.className = "text-2xl font-black text-green-500"; }
+  else if (fdi < 30) { display.textContent = "MODERATE"; display.className = "text-2xl font-black text-blue-400"; }
+  else if (fdi < 60) { display.textContent = "HIGH"; display.className = "text-2xl font-black text-yellow-500"; }
+  else if (fdi < 100) { display.textContent = "EXTREME"; display.className = "text-2xl font-black text-orange-500"; }
+  else { display.textContent = "CATASTROPHIC"; display.className = "text-2xl font-black text-red-600 animate-pulse"; }
 }
 updateFDIUI();
-
-let currentTool = "ignite";
-let currentUnitType = null;
-const units = [];
-
-const unitTemplates = {
-  striker: { speed: 1.4, waterMax: 500, suppression: 0.4, color: "#38bdf8", label: "Striker" },
-  tanker: { speed: 0.8, waterMax: 3500, suppression: 0.8, color: "#ef4444", label: "Heavy Tanker" },
-  dozer: { speed: 0.3, waterMax: 0, suppression: 0.5, color: "#facc15", label: "Bulldozer" },
-  bomber: { speed: 3.5, waterMax: 4000, suppression: 2.2, color: "#c084fc", label: "Fixed Wing Bomber" }
-};
 
 function inside(x, y) { return x >= 0 && y >= 0 && x < GRID && y < GRID; }
 
@@ -315,50 +350,33 @@ function igniteCell(x, y) {
   if (c.state === "unburnt" || c.state === "contained") {
     c.state = "burning";
     c.burnIntensity = 0.1;
-    c.exposure = 10;
+    c.exposure = 8;
   }
 }
 
-function curingFactor(c) {
-  if (c < 20) return 0;
-  return 1.036 / (1 + 103.989 * Math.exp(-0.0996 * (c - 20)));
-}
-
-function windFactor(dx, dy) {
-  const rad = weather.windDir * Math.PI / 180;
-  const wx = Math.cos(rad); const wy = Math.sin(rad);
-  const length = Math.hypot(dx, dy) || 1;
-  const ndx = dx / length; const ndy = dy / length;
-  const dot = (ndx * wx + ndy * wy);
-  const base = 0.054 + (0.3575 * Math.pow(weather.windSpeed, 0.844));
-  return base * Math.max(0.15, 1.0 + dot * 1.5);
-}
-
-function slopeFactor(e1, e2) {
-  const rise = e2 - e1;
-  const theta = Math.atan2(rise, cellSize) * 180 / Math.PI;
-  if (theta <= 0) return Math.max(0.2, Math.exp(0.03 * theta));
-  return Math.min(10, Math.exp(0.0693 * theta));
-}
-
+// Multi-variable physics fire spread calculation loops
 function updateSimulationEngine() {
   const newIgnitions = [];
-  const Cc = curingFactor(fuels.curing);
+  
+  // Calculate Curing Factor Math
+  const cur = fuels.curing;
+  const Cc = cur < 20 ? 0 : 1.036 / (1 + 103.989 * Math.exp(-0.0996 * (cur - 20)));
 
   for (let y = 0; y < GRID; y++) {
     for (let x = 0; x < GRID; x++) {
       const cell = grid[y][x];
       if (cell.state !== "burning") {
-        if (cell.retardant > 0) cell.retardant -= 0.005;
+        if (cell.retardant > 0) cell.retardant -= 0.003;
         continue;
       }
 
-      cell.burnIntensity += 0.002;
-      if (cell.burnIntensity > 2.0) {
+      cell.burnIntensity += 0.004;
+      if (cell.burnIntensity > 2.5) {
         cell.state = "burnt";
         continue;
       }
 
+      // Check spread trajectory to neighbors
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
@@ -368,17 +386,26 @@ function updateSimulationEngine() {
           const target = grid[ny][nx];
           if (target.state !== "unburnt" && target.state !== "contained") continue;
 
-          const Wf = windFactor(dx, dy);
-          const Sf = slopeFactor(cell.elevation, target.elevation);
+          // Wind math vectors
+          const rad = weather.windDir * Math.PI / 180;
+          const wx = Math.cos(rad); const wy = Math.sin(rad);
+          const len = Math.hypot(dx, dy) || 1;
+          const dot = ((dx / len) * wx + (dy / len) * wy);
+          const Wf = (0.05 + (0.35 * Math.pow(weather.windSpeed, 0.85))) * Math.max(0.15, 1.0 + dot * 1.6);
+
+          // Topography vector math lines
+          const rise = target.elevation - cell.elevation;
+          const theta = Math.atan2(rise, cellSize) * 180 / Math.PI;
+          const Sf = theta <= 0 ? Math.max(0.15, Math.exp(0.03 * theta)) : Math.min(8, Math.exp(0.07 * theta));
+
+          // Controlled strategic pace configuration metric loop
+          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 5.0) * 0.004;
           
-          // SPREAD METRIC CONTROL: Set to an even slower pace (0.005) for highly strategic game mechanics
-          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 4.5) * 0.005;
-          
-          if (target.retardant > 0) ros *= 0.10;
-          if (target.state === "contained") ros *= 0.03;
+          if (target.retardant > 0) ros *= 0.05;
+          if (target.state === "contained") ros *= 0.02;
 
           target.exposure += ros;
-          if (target.exposure > 5.0) {
+          if (target.exposure > 4.5) {
             newIgnitions.push({ x: nx, y: ny });
           }
         }
@@ -390,6 +417,7 @@ function updateSimulationEngine() {
     igniteCell(ign.x, ign.y);
   }
 
+  // Handle active fleet resource updates
   for (const u of units) {
     const t = unitTemplates[u.type];
     
@@ -399,12 +427,12 @@ function updateSimulationEngine() {
       , waterSources[0]);
 
       const dist = Math.hypot(nextW.x - u.x, nextW.y - u.y);
-      if (dist < 1.2) {
-        u.water += 200;
+      if (dist < 1.0) {
+        u.water += 300;
         if (u.water >= t.waterMax) {
           u.water = t.waterMax;
           u.mode = "suppressing";
-          pushLog(`${t.label} refilled and running to front.`);
+          pushLog(`${t.label} water arrays fully replenished. Returning to forward strategy.`);
         }
       } else {
         u.x += ((nextW.x - u.x) / dist) * t.speed;
@@ -414,7 +442,7 @@ function updateSimulationEngine() {
     }
 
     const targetDist = Math.hypot(u.targetX - u.x, u.targetY - u.y);
-    if (targetDist > 0.4) {
+    if (targetDist > 0.3) {
       u.x += ((u.targetX - u.x) / targetDist) * t.speed;
       u.y += ((u.targetY - u.y) / targetDist) * t.speed;
     }
@@ -432,49 +460,47 @@ function updateSimulationEngine() {
           }
         }
       } else if (u.type === "bomber") {
-        if (targetDist <= 1.2 && u.water > 0) {
-          pushLog(`Fixed Wing Drop deployed line layers.`);
-          u.water = 0; 
-          u.targetX = u.homeX; u.targetY = u.homeY;
-          
-          for (let i = -5; i <= 5; i++) {
-            const rx = Math.floor(cx + (Math.random() - 0.5) * 8);
-            const ry = Math.floor(cy + (Math.random() - 0.5) * 8);
-            if (inside(rx, ry)) grid[ry][rx].retardant = 6.0;
+        if (targetDist <= 1.5 && u.water > 0) {
+          pushLog(`Air Tanker completed containment chemical drop.`);
+          u.water = 0; u.targetX = u.homeX; u.targetY = u.homeY;
+          for (let i = -6; i <= 6; i++) {
+            const rx = Math.floor(cx + (Math.random() - 0.5) * 10);
+            const ry = Math.floor(cy + (Math.random() - 0.5) * 10);
+            if (inside(rx, ry)) grid[ry][rx].retardant = 8.0;
           }
         }
         if (u.water === 0 && targetDist <= 1.5) {
           u.water = t.waterMax;
-          pushLog(`Fixed Wing Base rearmed retardant arrays.`);
+          pushLog(`Air Tanker landed at tactical airfield base. Rearmed.`);
         }
       } else {
         if (u.water <= 0 && t.waterMax > 0) {
           u.mode = "refilling";
-          pushLog(`${t.label} supply depleted. Routing to water source.`);
+          pushLog(`${t.label} water depleted. Dispatching to closest reservoir.`);
           continue;
         }
 
-        let suppressed = false;
+        let working = false;
         for (let dy = -2; dy <= 2; dy++) {
           for (let dx = -2; dx <= 2; dx++) {
             const nx = cx + dx; const ny = cy + dy;
             if (inside(nx, ny) && grid[ny][nx].state === "burning") {
               grid[ny][nx].burnIntensity -= t.suppression;
-              if (grid[ny][nx].burnIntensity <= 0) {
-                grid[ny][nx].state = "contained";
-              }
-              suppressed = true;
+              if (grid[ny][nx].burnIntensity <= 0) grid[ny][nx].state = "contained";
+              working = true;
             }
           }
         }
-        if (suppressed && t.waterMax > 0) u.water -= 8;
+        if (working && t.waterMax > 0) u.water -= 12;
       }
     }
   }
 }
 
 function drawMap() {
-  ctx.fillStyle = "#060911";
+  handleEngineResize();
+  
+  ctx.fillStyle = "#05070c";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const visibleMinX = Math.max(0, Math.floor(camera.x - canvas.width / camera.zoom / 2 / cellSize) - 1);
@@ -482,54 +508,54 @@ function drawMap() {
   const visibleMinY = Math.max(0, Math.floor(camera.y - canvas.height / camera.zoom / 2 / cellSize) - 1);
   const visibleMaxY = Math.min(GRID, Math.ceil(camera.y + canvas.height / camera.zoom / 2 / cellSize) + 1);
 
-  const dSize = cellSize * camera.zoom + 0.6;
+  const dSize = cellSize * camera.zoom + 0.5;
 
+  // High contrast topography layer processing
   for (let y = visibleMinY; y < visibleMaxY; y++) {
     for (let x = visibleMinX; x < visibleMaxX; x++) {
       const cell = grid[y][x];
       const screen = worldToScreen(x * cellSize, y * cellSize);
 
       if (cell.state === "water") {
-        ctx.fillStyle = "#1e40af"; 
+        ctx.fillStyle = "#1d4ed8"; 
       } else if (cell.state === "burnt") {
-        ctx.fillStyle = "#111622"; 
+        ctx.fillStyle = "#0f131c"; 
       } else if (cell.state === "contained") {
-        ctx.fillStyle = "#065f46"; 
+        ctx.fillStyle = "#0f766e"; 
       } else {
-        // Vibrant forest green styling matrix to guarantee visibility on dark monitors
-        const heightMapping = (cell.elevation - 50) / 150;
-        let r = Math.floor(20 + heightMapping * 35);
-        let g = Math.floor(95 + heightMapping * 45);
-        let b = Math.floor(30 + heightMapping * 35);
-        
-        if (cell.retardant > 0) { r += 70; b += 40; }
+        const hNorm = (cell.elevation - 30) / 160;
+        let r = Math.floor(25 + hNorm * 45);
+        let g = Math.floor(85 + hNorm * 55);
+        let b = Math.floor(35 + hNorm * 45);
+        if (cell.retardant > 0) { r += 80; b += 50; }
         ctx.fillStyle = `rgb(${r},${g},${b})`;
       }
 
       ctx.fillRect(screen.x, screen.y, dSize, dSize);
 
-      if (Math.floor(cell.elevation) % 25 < 2.0 && cell.state !== "water") {
-        ctx.fillStyle = "rgba(255,255,255,0.08)";
+      // Topology contour grids tracking lines
+      if (Math.floor(cell.elevation) % 30 < 2.0 && cell.state !== "water") {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.07)";
         ctx.fillRect(screen.x, screen.y, dSize, dSize);
       }
 
       if (cell.state === "burning") {
-        ctx.fillStyle = "rgba(249, 115, 22, 0.5)";
+        ctx.fillStyle = "rgba(249, 115, 22, 0.4)";
         ctx.fillRect(screen.x, screen.y, dSize, dSize);
         
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        const pulse = 1.0 + Math.sin(Date.now() * 0.006 + x) * 0.12;
+        const wave = 1.0 + Math.sin(Date.now() * 0.007 + x) * 0.15;
         const grad = ctx.createRadialGradient(
           screen.x + dSize/2, screen.y + dSize/2, 0,
-          screen.x + dSize/2, screen.y + dSize/2, dSize * 3.5 * pulse
+          screen.x + dSize/2, screen.y + dSize/2, dSize * 3.8 * wave
         );
         grad.addColorStop(0, "#ffffff");
-        grad.addColorStop(0.2, "#ea580c");
+        grad.addColorStop(0.2, "#f97316");
         grad.addColorStop(1, "rgba(185,28,28,0)");
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(screen.x + dSize/2, screen.y + dSize/2, dSize * 3.5 * pulse, 0, Math.PI * 2);
+        ctx.arc(screen.x + dSize/2, screen.y + dSize/2, dSize * 3.8 * wave, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -540,29 +566,35 @@ function drawMap() {
 function drawUnits() {
   for (const u of units) {
     const screen = worldToScreen(u.x * cellSize, u.y * cellSize);
-    const rad = 8 * camera.zoom;
+    const rad = 9 * camera.zoom;
 
     ctx.save();
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 12;
     ctx.shadowColor = u.color;
     ctx.fillStyle = u.color;
 
     if (u.type === "bomber") {
       ctx.beginPath();
-      ctx.moveTo(screen.x, screen.y - rad * 1.5);
-      ctx.lineTo(screen.x + rad * 1.5, screen.y + rad * 1.2);
-      ctx.lineTo(screen.x - rad * 1.5, screen.y + rad * 1.2);
+      ctx.moveTo(screen.x, screen.y - rad * 1.6);
+      ctx.lineTo(screen.x + rad * 1.6, screen.y + rad * 1.2);
+      ctx.lineTo(screen.x - rad * 1.6, screen.y + rad * 1.2);
       ctx.closePath();
       ctx.fill();
     } else if (u.type === "dozer") {
       ctx.fillRect(screen.x - rad, screen.y - rad, rad * 2, rad * 2);
       ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(screen.x - rad, screen.y - rad, rad * 2, rad * 2);
     } else {
       ctx.beginPath();
       ctx.arc(screen.x, screen.y, rad, 0, Math.PI * 2);
       ctx.fill();
+    }
+    
+    if (u.mode === "refilling") {
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bolder 9px monospace";
+      ctx.fillText("REFILL", screen.x + rad + 4, screen.y + 3);
     }
     ctx.restore();
   }
@@ -576,16 +608,18 @@ function updateTelemetryDisplay() {
       if (grid[y][x].state === "contained") contained++;
     }
   }
+  
   const burnAreaEl = document.getElementById("burnArea");
   const containedPctEl = document.getElementById("containedPct");
   const unitCountEl = document.getElementById("unitCount");
 
-  if(burnAreaEl) burnAreaEl.textContent = (burning * 0.15).toFixed(1) + " ha";
+  if(burnAreaEl) coef = (burning * 0.15).toFixed(1); burnAreaEl.textContent = coef + " ha";
   const total = burning + contained;
   if(containedPctEl) containedPctEl.textContent = total === 0 ? "100%" : Math.round((contained / total) * 100) + "%";
-  if(unitCountEl) unitCountEl.textContent = `${units.length} Deployed`;
+  if(unitCountEl) unitCountEl.textContent = `${units.length} Active`;
 }
 
+// Intercept window mouse click configurations away from capturing UI fields
 canvas.addEventListener("contextmenu", e => e.preventDefault());
 
 canvas.addEventListener("mousedown", e => {
@@ -603,37 +637,29 @@ canvas.addEventListener("mousedown", e => {
   if (!inside(gx, gy)) return;
 
   if (currentTool === "ignite") {
-    pushLog(`Incident Warning: Controlled burn ignition at [${gx}, ${gy}].`);
+    pushLog(`Deployment Comm: Tactical flashpoint ignition point confirmed at [${gx}, ${gy}].`);
     for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        igniteCell(gx + dx, gy + dy);
-      }
+      for (let dx = -1; dx <= 1; dx++) igniteCell(gx + dx, gy + dy);
     }
   } else if (currentTool === "lightning") {
-    pushLog(`Emergency Alert: Lightning strike line generated.`);
-    for (let i = -5; i <= 5; i++) {
-      igniteCell(gx + i, gy + Math.floor((Math.random() - 0.5) * 3));
+    pushLog(`Incident Warning: High-voltage strike array tracked.`);
+    for (let i = -4; i <= 4; i++) {
+      igniteCell(gx + i, gy + Math.floor((Math.random() - 0.5) * 4));
     }
   } else if (currentTool === "unit" && currentUnitType) {
     const t = unitTemplates[currentUnitType];
     if (currentUnitType === "bomber") {
       units.push({
-        type: currentUnitType,
-        x: gx - 15, y: gy - 15,
-        homeX: gx - 15, homeY: gy - 15,
-        targetX: gx, targetY: gy,
-        water: t.waterMax, mode: "suppressing", color: t.color
+        type: currentUnitType, x: gx - 15, y: gy - 15, homeX: gx - 15, homeY: gy - 15,
+        targetX: gx, targetY: gy, water: t.waterMax, mode: "suppressing", color: t.color
       });
-      pushLog(`AIIMS Control: Air drop vector dispatched.`);
     } else {
       units.push({
-        type: currentUnitType,
-        x: gx, y: gy,
-        targetX: gx, targetY: gy,
+        type: currentUnitType, x: gx, y: gy, targetX: gx, targetY: gy,
         water: t.waterMax, mode: "suppressing", color: t.color
       });
-      pushLog(`AIIMS Control: Mobile unit deployed to asset coordinates.`);
     }
+    pushLog(`AIIMS Central: ${t.label} vector active at coordinates [${gx}, ${gy}].`);
   }
 });
 
@@ -651,14 +677,13 @@ canvas.addEventListener("click", e => {
           Math.hypot(curr.x - gx, curr.y - gy) < Math.hypot(prev.x - gx, prev.y - gy) ? curr : prev
         );
         closest.targetX = gx; closest.targetY = gy;
-        pushLog(`Redirecting closest operational unit to line coordinate: [${gx}, ${gy}].`);
+        pushLog(`Redirecting field asset line to grid sector: [${gx}, ${gy}].`);
       }
     }
   }
 });
 
 window.addEventListener("mouseup", () => dragging = false);
-
 window.addEventListener("mousemove", e => {
   if (!dragging) return;
   camera.x = camStartX - (e.clientX - dragStartX) / camera.zoom;
@@ -667,21 +692,21 @@ window.addEventListener("mousemove", e => {
 
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
-  const f = e.deltaY > 0 ? 0.85 : 1.15;
+  const scale = e.deltaY > 0 ? 0.88 : 1.12;
   const wBefore = screenToWorld(e.clientX, e.clientY);
-  camera.zoom = Math.max(0.15, Math.min(5, camera.zoom * f));
+  camera.zoom = Math.max(0.12, Math.min(6, camera.zoom * scale));
   const wAfter = screenToWorld(e.clientX, e.clientY);
   camera.x += wBefore.x - wAfter.x;
   camera.y += wBefore.y - wAfter.y;
 }, { passive: false });
 
-document.getElementById("pointIgnition").onclick = () => { currentTool = "ignite"; currentUnitType = null; resetButtons(); document.getElementById("pointIgnition").classList.add("bg-orange-600"); };
-document.getElementById("lineIgnition").onclick = () => { currentTool = "lightning"; currentUnitType = null; resetButtons(); document.getElementById("lineIgnition").classList.add("bg-red-600"); };
+document.getElementById("pointIgnition").onclick = () => { currentTool = "ignite"; currentUnitType = null; resetButtons(); document.getElementById("pointIgnition").classList.add("active"); };
+document.getElementById("lineIgnition").onclick = () => { currentTool = "lightning"; currentUnitType = null; resetButtons(); document.getElementById("lineIgnition").classList.add("active"); };
 
 function resetButtons() {
-  document.querySelectorAll(".unit-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("pointIgnition").classList.remove("bg-orange-600");
-  document.getElementById("lineIgnition").classList.remove("bg-red-600");
+  document.querySelectorAll("[data-unit]").forEach(b => b.classList.remove("active"));
+  document.getElementById("pointIgnition").classList.remove("active");
+  document.getElementById("lineIgnition").classList.remove("active");
 }
 
 Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
@@ -693,22 +718,25 @@ Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
   };
 });
 
-let lastTime = Date.now();
-function gameLoop() {
+// Setup continuous clock tick cycles
+let lastTick = Date.now();
+function runCoreLoop() {
   const now = Date.now();
-  if (now - lastTime >= 60) { 
+  if (now - lastTick >= 60) { 
     updateSimulationEngine();
-    lastTime = now;
+    lastTick = now;
   }
 
   drawMap();
   drawUnits();
   updateTelemetryDisplay();
 
-  requestAnimationFrame(gameLoop);
+  requestAnimationFrame(runCoreLoop);
 }
 
-requestAnimationFrame(gameLoop);
+// Boot tracking engine pipeline
+document.getElementById("pointIgnition").classList.add("active");
+requestAnimationFrame(runCoreLoop);
 </script>
 </body>
 </html>
