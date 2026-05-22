@@ -8,108 +8,96 @@
 
 <style>
   html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background-color: #05070c;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    background-color: #030508;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
-  /* Master Map Viewport Container */
   .map-viewport {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
-    overflow: hidden;
-    cursor: grab;
+    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+    overflow: hidden; cursor: grab;
   }
   .map-viewport:active { cursor: grabbing; }
 
-  /* Hardware-Accelerated Transform Surface */
+  /* Expanded 80x80 High-Definition Grid Layout */
   #map-surface {
-    position: absolute;
-    transform-origin: center center;
-    display: grid;
-    /* 60x60 Tactical Grid for optimized DOM performance */
-    grid-template-columns: repeat(60, 24px);
-    grid-template-rows: repeat(60, 24px);
-    gap: 1px;
-    background-color: rgba(255, 255, 255, 0.03);
-    padding: 10px;
-    user-select: none;
-    will-change: transform;
+    position: absolute; transform-origin: center center; display: grid;
+    grid-template-columns: repeat(80, 26px);
+    grid-template-rows: repeat(80, 26px);
+    gap: 1px; background-color: rgba(255, 255, 255, 0.02);
+    padding: 20px; user-select: none; will-change: transform;
   }
 
-  /* Map Sector Styles */
+  /* Enhanced Sector Topography & Material Shaders */
   .sector {
-    width: 24px;
-    height: 24px;
-    border-radius: 2px;
-    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    width: 26px; height: 26px; border-radius: 3px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    position: relative;
   }
   
-  /* Topography Color States */
-  .state-unburnt  { background-color: #1e3a1e; border: 1px solid rgba(255,255,255,0.02); }
-  .state-water    { background-color: #1d4ed8; box-shadow: inset 0 0 4px rgba(0,0,0,0.5); }
-  .state-contained { background-color: #0f766e; }
-  .state-burnt    { background-color: #0f131c; border: 1px solid #1e293b; }
+  .state-unburnt   { background: linear-gradient(135deg, #162e16 0%, #112411 100%); border: 1px solid rgba(255,255,255,0.01); }
+  .state-water     { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%); box-shadow: inset 0 0 6px rgba(0,0,0,0.6); }
+  .state-contained { background: linear-gradient(135deg, #0d9488 0%, #115e59 100%); border: 1px solid #14b8a6; }
+  .state-burnt     { background: linear-gradient(135deg, #090d16 0%, #111827 100%); border: 1px solid #1e293b; }
+  .state-staging   { background: linear-gradient(135deg, #475569 0%, #334155 100%); border: 2px dashed #94a3b8; animation: pulse-staging 2s infinite; }
   
-  /* Fire State with Native CSS Animation pulses */
-  .state-burning  { 
-    background-color: #ef4444; 
-    animation: pulse-fire 0.6s infinite alternate;
-    box-shadow: 0 0 8px #f97316;
+  .state-burning   { 
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    animation: pulse-fire 0.5s infinite alternate; box-shadow: 0 0 12px #f97316;
+  }
+
+  /* Vector Targeting UI Helper Class */
+  .state-flightpath-target {
+    position: relative;
+  }
+  .state-flightpath-target::after {
+    content: ''; position: absolute; inset: 0; background: rgba(192, 132, 252, 0.4);
+    border: 2px solid #c084fc; border-radius: 3px; z-index: 10; pointer-events: none;
+  }
+
+  /* Retardant Overlay Indicator */
+  .has-retardant::before {
+    content: ''; position: absolute; inset: 2px; border: 2px solid #ec4899;
+    background: rgba(236, 72, 153, 0.25); border-radius: 2px; pointer-events: none; z-index: 5;
   }
 
   @keyframes pulse-fire {
-    0% { background-color: #ef4444; transform: scale(0.95); }
-    100% { background-color: #f97316; transform: scale(1.05); z-index: 5; }
+    0% { transform: scale(0.93); filter: brightness(1); }
+    100% { transform: scale(1.05); filter: brightness(1.3); z-index: 4; }
+  }
+  @keyframes pulse-staging {
+    0%, 100% { opacity: 0.9; } 50% { opacity: 0.6; }
   }
 
-  /* Asset Unit Marker Graphics */
+  /* Specialized Unit Markers */
   .unit-marker {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid #ffffff;
-    transform: translate(-50%, -50%);
-    transition: left 0.4s linear, top 0.4s linear;
-    z-index: 40;
-    box-shadow: 0 0 10px rgba(255,255,255,0.8);
+    position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid #ffffff; transform: translate(-50%, -50%);
+    transition: left 0.5s cubic-bezier(0.25, 1, 0.5, 1), top 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 50; box-shadow: 0 0 12px rgba(255,255,255,0.6);
+    pointer-events: none;
   }
 
-  /* HUD glass panels */
   .glass-panel {
-    backdrop-filter: blur(16px);
-    background: rgba(10, 15, 26, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px); background: rgba(8, 12, 22, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.07); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   }
 
-  .hud-amber { color: #f59e0b; text-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
+  .hud-amber { color: #f59e0b; text-shadow: 0 0 12px rgba(245, 158, 11, 0.25); }
   input[type="range"] { width: 100%; accent-color: #f59e0b; cursor: pointer; }
 
   .unit-btn {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06);
     transition: all 0.2s ease;
   }
-  .unit-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
-  .unit-btn.active { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+  .unit-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15); }
+  .unit-btn.active { border-color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
 
   .custom-scroll::-webkit-scrollbar { width: 4px; }
-  .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
   .ui-container {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 10; pointer-events: none;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;
   }
   .ui-interactive { pointer-events: auto; }
 </style>
@@ -125,25 +113,28 @@
   <div class="absolute top-0 left-0 right-0 h-24 glass-panel flex items-center px-6 text-slate-200 justify-between ui-interactive">
     <div>
       <div class="text-xl font-black hud-amber tracking-wider">INCIDENT COMMANDER: AUSTRALIA</div>
-      <div class="text-[10px] tracking-widest text-slate-400 font-bold uppercase mt-0.5">DOM Grid Engine Matrix v4.0</div>
+      <div class="text-[10px] tracking-widest text-slate-400 font-bold uppercase mt-0.5">Vector Flight System Matrix v4.5</div>
     </div>
 
     <div class="grid grid-cols-5 gap-6 w-2/3 text-xs ml-12">
       <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Speed</span><span id="windSpeedVal" class="text-amber-400 font-mono font-bold">35</span><span class="text-slate-500">km/h</span></div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Speed</span><span id="windSpeedVal" class="text-amber-400 font-bold">35</span><span class="text-slate-500">km/h</span></div>
         <input id="windSpeed" type="range" min="0" max="100" value="35">
       </div>
       <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Direction</span><span id="windDirVal" class="text-cyan-400 font-mono font-bold">45</span><span class="text-slate-500">°</span></div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Dir</span><span id="windDirVal" class="text-cyan-400 font-bold">45</span><span class="text-slate-500">°</span></div>
         <input id="windDir" type="range" min="0" max="360" value="45">
       </div>
       <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Temperature</span><span id="tempVal" class="text-orange-400 font-mono font-bold">38</span><span class="text-slate-500">°C</span></div>
+        <div class="flex justify-between mb-1 text-slate-400"><span>Temp</span><span id="tempVal" class="text-orange-400 font-bold">38</span><span class="text-slate-500">°C</span></div>
         <input id="temperature" type="range" min="15" max="45" value="38">
       </div>
       <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Humidity</span><span id="humidityVal" class="text-blue-400 font-mono font-bold">12</span><span class="text-slate-500">%</span></div>
-        <input id="humidity" type="range" min="5" max="80" value="12">
+        <div class="flex justify-between mb-1 text-slate-400"><span>Air Drop Payload</span></div>
+        <select id="airPayload" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-amber-400 font-bold outline-none">
+          <option value="water">Suppression Water Drop</option>
+          <option value="retardant">Phos-Chek Retardant Barrier</option>
+        </select>
       </div>
       <div class="flex flex-col justify-center items-end border-l border-slate-800 pl-6">
         <div class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Fire Danger Index</div>
@@ -152,69 +143,81 @@
     </div>
   </div>
 
-  <div class="absolute top-28 left-1/2 -translate-x-1/2 glass-panel px-5 py-2 rounded-full text-[11px] text-slate-300 font-semibold uppercase tracking-wider border border-slate-800/80">
-    <span class="text-amber-400 font-bold">Left Click Sector:</span> Deploy/Interact | <span class="text-cyan-400 font-bold">Scroll:</span> Zoom | <span class="text-emerald-400 font-bold">Left Click + Drag Empty Space:</span> Pan Map
+  <div class="absolute top-28 left-1/2 -translate-x-1/2 glass-panel px-6 py-2 rounded-full text-[11px] text-slate-300 font-semibold uppercase tracking-wider border border-slate-800/80">
+    <span class="text-purple-400 font-bold">Plane Vector Mode:</span> Click & Drag line path directly over the sectors to execute drops
   </div>
 
-  <div class="absolute top-28 left-4 w-80 glass-panel rounded-2xl p-4 text-slate-200 space-y-4 ui-interactive">
+  <div class="absolute top-28 left-4 w-80 glass-panel rounded-2xl p-4 text-slate-200 space-y-3.5 ui-interactive max-h-[82vh] overflow-y-auto custom-scroll">
     <div>
-      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Environmental Profile</div>
-      <div class="mb-3 text-xs">
-        <div class="flex justify-between mb-1 text-slate-400"><span>Fuel Load</span><span id="fuelLoadVal" class="font-mono font-bold text-amber-500">18</span><span class="text-slate-500">t/ha</span></div>
-        <input id="fuelLoad" type="range" min="5" max="35" value="18">
-      </div>
-    </div>
-
-    <div>
-      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Tactical Incident Matrix</div>
+      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Tactical Operations Matrix</div>
       <div class="grid grid-cols-2 gap-2 text-xs">
-        <button id="pointIgnition" class="bg-orange-950/40 hover:bg-orange-900/40 border border-orange-500/30 text-orange-400 rounded-xl py-2.5 font-bold transition-all">Point Ignition</button>
-        <button id="lightningStrike" class="bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-400 rounded-xl py-2.5 font-bold transition-all">Lightning Strike</button>
+        <button id="pointIgnition" class="bg-orange-950/40 hover:bg-orange-900/40 border border-orange-500/30 text-orange-400 rounded-xl py-2 font-bold transition-all">Point Ignition</button>
+        <button id="lightningStrike" class="bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-400 rounded-xl py-2 font-bold transition-all">Lightning Array</button>
+      </div>
+      <div class="grid grid-cols-1 gap-2 text-xs mt-2">
+        <button id="stagingBuild" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl py-2 font-bold transition-all">Establish Staging Area</button>
       </div>
     </div>
 
     <div>
       <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Resource Dispatch (AIIMS)</div>
       <div class="grid grid-cols-1 gap-2 text-xs">
-        <button data-unit="striker" class="unit-btn rounded-xl p-3 text-left">
-          <span class="font-bold block text-sky-400">Light Attack Unit</span>
-          <span class="text-[10px] text-slate-400 block mt-0.5">Fast Maneuver Suppression Appliance</span>
+        <button data-unit="striker" class="unit-btn rounded-xl p-2.5 text-left">
+          <span class="font-bold block text-sky-400">Light Attack Unit (Striker)</span>
+          <span class="text-[10px] text-slate-400 block">Fast Off-Road Grassland Suppression</span>
         </button>
-        <button data-unit="tanker" class="unit-btn rounded-xl p-3 text-left">
-          <span class="font-bold block text-red-400">Heavy Tanker Unit</span>
-          <span class="text-[10px] text-slate-400 block mt-0.5">Cat 1 Appliance - High Capacity Line</span>
+        <button data-unit="tanker" class="unit-btn rounded-xl p-2.5 text-left">
+          <span class="font-bold block text-red-400">Heavy Tanker (Cat 1)</span>
+          <span class="text-[10px] text-slate-400 block">High Capacity Fireline Protection Asset</span>
         </button>
-        <button data-unit="dozer" class="unit-btn rounded-xl p-3 text-left">
-          <span class="font-bold block text-amber-400">Heavy Plant (Bulldozer)</span>
-          <span class="text-[10px] text-slate-400 block mt-0.5">Establishes Defensible Firebreaks</span>
+        <button data-unit="raft" class="unit-btn rounded-xl p-2.5 text-left">
+          <span class="font-bold block text-emerald-400">RAFT Ground Team</span>
+          <span class="text-[10px] text-slate-400 block">Remote Area Handtool Operations crew</span>
+        </button>
+        <button data-unit="bomber" class="unit-btn rounded-xl p-2.5 text-left">
+          <span class="font-bold block text-purple-400">Fixed-Wing Air Tanker</span>
+          <span class="text-[10px] text-slate-400 block">Draw vector path coordinates directly to drop</span>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="absolute top-28 right-4 w-85 glass-panel rounded-2xl p-4 text-slate-200 space-y-4 ui-interactive">
+  <div class="absolute top-28 right-4 w-96 glass-panel rounded-2xl p-4 text-slate-200 space-y-4 ui-interactive max-h-[82vh] flex flex-col">
     <div>
       <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Incident Operational Monitor</div>
       <table class="w-full text-xs">
-        <tr class="h-9 border-b border-slate-900">
-          <td class="text-slate-400 font-medium">Total Active Fires</td>
-          <td class="text-right font-mono font-bold text-orange-400 text-sm" id="burnArea">0 Sectors</td>
+        <tr class="h-8 border-b border-slate-900">
+          <td class="text-slate-400">Total Burning Grid Zones</td>
+          <td class="text-right font-mono font-bold text-orange-400" id="burnArea">0 Sectors</td>
         </tr>
-        <tr class="h-9 border-b border-slate-900">
-          <td class="text-slate-400 font-medium">Contained Sectors</td>
-          <td class="text-right font-mono font-bold text-emerald-400 text-sm" id="containedPct">0 Sectors</td>
-        </tr>
-        <tr class="h-9">
-          <td class="text-slate-400 font-medium">Active Deployed Fleet</td>
-          <td class="text-right font-mono font-bold text-cyan-400 text-sm" id="unitCount">0 Active</td>
+        <tr class="h-8 border-b border-slate-900">
+          <td class="text-slate-400">Contained Safety Margin</td>
+          <td class="text-right font-mono font-bold text-emerald-400" id="containedPct">0 Sectors</td>
         </tr>
       </table>
+    </div>
+
+    <div class="flex-1 flex flex-col min-h-[160px]">
+      <div class="text-[10px] uppercase tracking-widest text-slate-400 font-black mb-1.5 border-b border-slate-900 pb-1">Active Fleet Roster</div>
+      <div class="overflow-y-auto flex-1 custom-scroll text-xs max-h-48">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-[10px] text-slate-500 border-b border-slate-900">
+              <th class="pb-1">Asset Call-Sign</th>
+              <th class="pb-1">Location</th>
+              <th class="pb-1 text-right">Demobilize</th>
+            </tr>
+          </thead>
+          <tbody id="rosterTableBody">
+            </tbody>
+        </table>
+      </div>
     </div>
     
     <div>
       <div class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1.5">SICC Communications Log</div>
-      <div id="logisticsLog" class="h-44 overflow-y-auto text-[10px] text-slate-400 space-y-1.5 pr-1 font-mono custom-scroll">
-        <div>[SYSTEM] Core CSS-Grid mapping system initialized successfully.</div>
+      <div id="logisticsLog" class="h-28 overflow-y-auto text-[10px] text-slate-400 space-y-1.5 pr-1 font-mono custom-scroll">
+        <div>[SYSTEM] High-Resolution DOM-Matrix initialized at 80x80 resolution bounds. Ready.</div>
       </div>
     </div>
   </div>
@@ -222,27 +225,26 @@
 </div>
 
 <script>
-// Configuration Constants
-const GRID_SIZE = 60; // Clean layout bounds for fast responsive interaction
-const SECTOR_SIZE = 25; // 24px + 1px gap
+const GRID_SIZE = 80; 
+const SECTOR_SIZE = 27; // 26px + 1px spacing
 
 const viewport = document.getElementById("viewport");
 const mapSurface = document.getElementById("map-surface");
 
-// Pan & Zoom Transform Matrix State
+// Centering Matrix Layout Transforms
 let camX = (window.innerWidth / 2) - ((GRID_SIZE * SECTOR_SIZE) / 2);
 let camY = (window.innerHeight / 2) - ((GRID_SIZE * SECTOR_SIZE) / 2);
-let zoom = 0.75;
+let zoom = 0.55;
 
 let isDragging = false;
 let startX = 0, startY = 0;
 
+// Drag and Zoom Matrices Mechanics
 function updateSurfaceTransform() {
   mapSurface.style.transform = `translate(${camX}px, ${camY}px) scale(${zoom})`;
 }
 updateSurfaceTransform();
 
-// Pan and Zoom Event Management
 viewport.addEventListener("mousedown", (e) => {
   if (e.target === viewport || e.target === mapSurface) {
     isDragging = true;
@@ -252,34 +254,51 @@ viewport.addEventListener("mousedown", (e) => {
 });
 
 window.addEventListener("mousemove", (e) => {
-  if (!isDragging) return;
-  camX = e.clientX - startX;
-  camY = e.clientY - startY;
-  updateSurfaceTransform();
+  if (isDragging) {
+    camX = e.clientX - startX;
+    camY = e.clientY - startY;
+    updateSurfaceTransform();
+  }
+  if (isDrawingFlightpath) {
+    handleFlightpathDrag(e);
+  }
 });
 
-window.addEventListener("mouseup", () => isDragging = false);
+window.addEventListener("mouseup", () => {
+  isDragging = false;
+  if (isDrawingFlightpath) {
+    executeFlightpathDrop();
+  }
+});
 
 viewport.addEventListener("wheel", (e) => {
   e.preventDefault();
-  const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
-  zoom = Math.max(0.2, Math.min(3, zoom * scaleFactor));
+  const scale = e.deltaY > 0 ? 0.88 : 1.12;
+  zoom = Math.max(0.15, Math.min(4, zoom * scale));
   updateSurfaceTransform();
 }, { passive: false });
 
-// Data Management Engine
 const sectors = [];
 const activeUnits = [];
+let nextUnitId = 1;
+
 let selectedTool = "ignite";
 let selectedUnitType = null;
 
 const unitTemplates = {
-  striker: { color: "#38bdf8", label: "Light Unit" },
-  tanker: { color: "#ef4444", label: "Heavy Tanker" },
-  dozer: { color: "#facc15", label: "Bulldozer" }
+  striker: { color: "#38bdf8", label: "Light Striker" },
+  tanker: { color: "#ef4444", label: "Cat-1 Tanker" },
+  raft: { color: "#10b981", label: "RAFT Infantry" },
+  bomber: { color: "#c084fc", label: "Air Tanker" }
 };
 
-// Generate Matrix Grid Elements Natively
+// Vector Drag Variables for Air Tanker Drops
+let isDrawingFlightpath = false;
+let flightpathStartSector = null;
+let currentHoveredSector = null;
+let targetedSectorPath = [];
+
+// Initialize Large Topographic Base Array Elements
 for (let y = 0; y < GRID_SIZE; y++) {
   for (let x = 0; x < GRID_SIZE; x++) {
     const el = document.createElement("div");
@@ -287,18 +306,37 @@ for (let y = 0; y < GRID_SIZE; y++) {
     el.dataset.x = x;
     el.dataset.y = y;
     
-    // Dynamic topographically mapped water channels
     let state = "unburnt";
-    if ((x > 10 && x < 18 && y > 10 && y < 18) || (x > 40 && x < 48 && y > 35 && y < 43)) {
+    // Large natural Australian interior topology water catchment boundaries
+    if ((x > 18 && x < 28 && y > 20 && y < 30) || (x > 55 && x < 68 && y > 45 && y < 58)) {
       state = "water";
       el.className = "sector state-water";
     }
 
     mapSurface.appendChild(el);
-    sectors.push({ x, y, state, el });
+    sectors.push({ x, y, state, el, hasRetardant: false });
 
-    // Handle Individual Interactions directly via native DOM routing
-    el.addEventListener("click", () => handleSectorClick(x, y));
+    // Handle interactive targeting loops
+    el.addEventListener("mousedown", (e) => {
+      if (e.button === 0 && selectedTool === "unit" && selectedUnitType === "bomber") {
+        e.stopPropagation();
+        isDrawingFlightpath = true;
+        flightpathStartSector = { x, y };
+      }
+    });
+
+    el.addEventListener("mouseenter", () => {
+      if (isDrawingFlightpath) {
+        currentHoveredSector = { x, y };
+        calculateFlightpathLine();
+      }
+    });
+
+    el.addEventListener("click", (e) => {
+      if (selectedTool !== "unit" || selectedUnitType !== "bomber") {
+        handleSectorInteraction(x, y);
+      }
+    });
   }
 }
 
@@ -312,146 +350,271 @@ function pushLog(text) {
   if (!logBox) return;
   const timeStr = new Date().toTimeString().split(' ')[0];
   logBox.innerHTML = `<div class="text-slate-300"><span class="text-slate-500">[${timeStr}]</span> ${text}</div>` + logBox.innerHTML;
+  logBox.scrollTop = 0;
 }
 
-function handleSectorClick(x, y) {
+// Draw Target Visual Flight Lines (Bresenham Vector Math line mapping)
+function calculateFlightpathLine() {
+  if (!flightpathStartSector || !currentHoveredSector) return;
+  
+  // Clear old vector line target overlays
+  sectors.forEach(s => s.el.classList.remove("state-flightpath-target"));
+  targetedSectorPath = [];
+
+  let x0 = flightpathStartSector.x; let y0 = flightpathStartSector.y;
+  let x1 = currentHoveredSector.x; let y1 = currentHoveredSector.y;
+
+  let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  let dy = Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  let err = (dx > dy ? dx : -dy) / 2, e2;
+
+  while (true) {
+    const s = getSector(x0, y0);
+    if (s) {
+      s.el.classList.add("state-flightpath-target");
+      targetedSectorPath.push(s);
+    }
+    if (x0 === x1 && y0 === y1) break;
+    e2 = err;
+    if (e2 > -dx) { err -= dy; x0 += sx; }
+    if (e2 < dy) { err += dx; y0 += sy; }
+  }
+}
+
+function handleFlightpathDrag(e) {
+  // Catch moving elements even outside specific bounds boundaries
+  if (!isDrawingFlightpath) return;
+}
+
+function executeFlightpathDrop() {
+  isDrawingFlightpath = false;
+  sectors.forEach(s => s.el.classList.remove("state-flightpath-target"));
+
+  if (targetedSectorPath.length === 0) return;
+
+  const payloadType = document.getElementById("airPayload").value;
+  
+  // Create a visual air asset marker drop path simulation run animation lines
+  const startSec = targetedSectorPath[0];
+  const endSec = targetedSectorPath[targetedSectorPath.length - 1];
+
+  const marker = document.createElement("div");
+  marker.className = "unit-marker";
+  marker.style.backgroundColor = unitTemplates.bomber.color;
+  marker.style.left = `${(startSec.x * SECTOR_SIZE) + 24}px`;
+  marker.style.top = `${(startSec.y * SECTOR_SIZE) + 24}px`;
+  mapSurface.appendChild(marker);
+
+  pushLog(`Air Ops: Fixed-Wing Bomber initiated delivery vector drop path matching [${payloadType.toUpperCase()}] line payload.`);
+
+  setTimeout(() => {
+    marker.style.left = `${(endSec.x * SECTOR_SIZE) + 24}px`;
+    marker.style.top = `${(endSec.y * SECTOR_SIZE) + 24}px`;
+  }, 50);
+
+  // Apply payloads along targeted grid trajectories
+  targetedSectorPath.forEach((sec) => {
+    if (payloadType === "retardant") {
+      sec.hasRetardant = true;
+      sec.el.classList.add("has-retardant");
+    } else {
+      // Direct high volume suppression water action layout knocks fires immediately
+      if (sec.state === "burning") {
+        sec.state = "contained";
+        sec.el.className = "sector state-contained";
+      }
+    }
+  });
+
+  setTimeout(() => { if (marker.parentNode) marker.parentNode.removeChild(marker); }, 900);
+  targetedSectorPath = [];
+  flightpathStartSector = null;
+}
+
+function handleSectorInteraction(x, y) {
   const sec = getSector(x, y);
   if (!sec) return;
 
   if (selectedTool === "ignite") {
     if (sec.state === "unburnt") {
-      sec.state = "burning";
-      sec.el.className = "sector state-burning";
-      pushLog(`Ignition: Tactical fire line flare-up confirmed at grid [${x}, ${y}].`);
+      sec.state = "burning"; sec.el.className = "sector state-burning";
+      pushLog(`Ignition: Flashpoint line established manually at sector [${x}, ${y}].`);
     }
   } else if (selectedTool === "lightning") {
-    pushLog(`Strike Event: Lightning system dispersed discharges near matrix [${x}, ${y}].`);
+    pushLog(`Weather: Intense atmospheric lightning front strike discharged near grid [${x}, ${y}].`);
     for (let i = -2; i <= 2; i++) {
       for (let j = -2; j <= 2; j++) {
         const target = getSector(x + i, y + j);
-        if (target && target.state === "unburnt" && Math.random() > 0.4) {
-          target.state = "burning";
-          target.el.className = "sector state-burning";
+        if (target && target.state === "unburnt" && Math.random() > 0.45) {
+          target.state = "burning"; target.el.className = "sector state-burning";
         }
       }
     }
-  } else if (selectedTool === "unit" && selectedUnitType) {
-    deployUnit(x, y, selectedUnitType);
+  } else if (selectedTool === "staging") {
+    sec.state = "staging";
+    sec.el.className = "sector state-staging";
+    pushLog(`Incident Base: Structural AIIMS Staging Area engineered at [${x}, ${y}].`);
+  } else if (selectedTool === "unit" && selectedUnitType && selectedUnitType !== "bomber") {
+    deployGroundAsset(x, y, selectedUnitType);
   }
 }
 
-function deployUnit(x, y, type) {
+function deployGroundAsset(x, y, type) {
   const template = unitTemplates[type];
   const marker = document.createElement("div");
   marker.className = "unit-marker";
   marker.style.backgroundColor = template.color;
-  
-  // Convert grid layout indices cleanly to absolute style coordinates
-  marker.style.left = `${(x * SECTOR_SIZE) + 22}px`;
-  marker.style.top = `${(y * SECTOR_SIZE) + 22}px`;
+  marker.style.left = `${(x * SECTOR_SIZE) + 24}px`;
+  marker.style.top = `${(y * SECTOR_SIZE) + 24}px`;
   
   mapSurface.appendChild(marker);
+
+  const uId = nextUnitId++;
+  activeUnits.push({ id: uId, x, y, type, marker, callsign: `${template.label.split(' ')[0]}-${uId}` });
   
-  activeUnits.push({ x, y, type, marker });
-  pushLog(`AIIMS Deploy: ${template.label} dispatched directly onto coordinate point [${x}, ${y}].`);
-  
-  document.getElementById("unitCount").textContent = `${activeUnits.length} Active`;
+  pushLog(`Logistics: ${template.label} [CS: ${template.label.split(' ')[0]}-${uId}] arrived on scene grid [${x}, ${y}].`);
+  rebuildRosterTable();
 }
 
-// Fixed-Pace Environmental Simulation Engine Clock Routine
+function dismissUnit(id) {
+  const idx = activeUnits.findIndex(u => u.id === id);
+  if (idx !== -1) {
+    const unit = activeUnits[idx];
+    if (unit.marker.parentNode) unit.marker.parentNode.removeChild(unit.marker);
+    pushLog(`Demobilization: Asset call-sign ${unit.callsign} dismissed from dispatch commands line.`);
+    activeUnits.splice(idx, 1);
+    rebuildRosterTable();
+  }
+}
+
+function rebuildRosterTable() {
+  const tbody = document.getElementById("rosterTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (activeUnits.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" class="text-slate-600 italic py-2 text-center">No assets active</td></tr>`;
+    return;
+  }
+
+  activeUnits.forEach(u => {
+    const tr = document.createElement("tr");
+    tr.className = "border-b border-slate-900/60 h-8 items-center";
+    tr.innerHTML = `
+      <td class="font-bold text-slate-300">${u.callsign}</td>
+      <td class="font-mono text-slate-400">[${u.x}, ${u.y}]</td>
+      <td class="text-right">
+        <button onclick="dismissUnit(${u.id})" class="bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-800/40 px-2 py-0.5 rounded text-[10px] font-bold transition-all">Dismiss</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Background Fire Matrix Loop Updates
 setInterval(() => {
   const sectorsToBurn = [];
   const sectorsToExtinguish = [];
 
-  // Update active fleet fireline suppression tracks
+  // Ground operational containment loops
   for (const unit of activeUnits) {
-    let fireSuppressed = false;
-    // Check surrounding 3x3 sectors
+    let suppressedCurrentZone = false;
+    
+    // Check local 3x3 footprint cells surrounding asset coordinates
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
         const target = getSector(unit.x + i, unit.y + j);
         if (target && target.state === "burning") {
           sectorsToExtinguish.push(target);
-          fireSuppressed = true;
+          suppressedCurrentZone = true;
         }
       }
     }
-    
-    // If nearby sector is clear, move land unit randomly closer toward the closest active fire
-    if (!fireSuppressed && Math.random() > 0.5) {
+
+    // Check Staging Buffs (Staging areas recharge/accelerate land speed parameters)
+    const currentSector = getSector(unit.x, unit.y);
+    const inStagingArea = currentSector && currentSector.state === "staging";
+
+    // Autonomous tactical AI patrol trajectory toward active flame sectors
+    if (!suppressedCurrentZone && Math.random() > (inStagingArea ? 0.2 : 0.5)) {
       const activeFires = sectors.filter(s => s.state === "burning");
       if (activeFires.length > 0) {
-        const targetFire = activeFires[0];
-        const dx = Math.sign(targetFire.x - unit.x);
-        const dy = Math.sign(targetFire.y - unit.y);
+        // Target closest tracked fire sector line bounding array coordinates
+        let closestFire = activeFires[0];
+        let minDist = Math.hypot(closestFire.x - unit.x, closestFire.y - unit.y);
+        
+        for (let f of activeFires) {
+          let d = Math.hypot(f.x - unit.x, f.y - unit.y);
+          if (d < minDist) { minDist = d; closestFire = f; }
+        }
+
+        const dx = Math.sign(closestFire.x - unit.x);
+        const dy = Math.sign(closestFire.y - unit.y);
+        
         unit.x += dx;
         unit.y += dy;
-        unit.marker.style.left = `${(unit.x * SECTOR_SIZE) + 22}px`;
-        unit.marker.style.top = `${(unit.y * SECTOR_SIZE) + 22}px`;
+        unit.marker.style.left = `${(unit.x * SECTOR_SIZE) + 24}px`;
+        unit.marker.style.top = `${(unit.y * SECTOR_SIZE) + 24}px`;
       }
     }
   }
 
-  // Calculate fire spread mechanics
+  // Active spread processing logic loops
   for (const sec of sectors) {
     if (sec.state === "burning") {
-      // Small chance to burn out naturally into ash matrix
-      if (Math.random() > 0.98) {
+      if (Math.random() > 0.985) {
         sectorsToExtinguish.push(sec);
         continue;
       }
 
-      // Check neighbor spread values
       const neighbors = [
-        getSector(sec.x + 1, sec.y),
-        getSector(sec.x - 1, sec.y),
-        getSector(sec.x, sec.y + 1),
-        getSector(sec.x, sec.y - 1)
+        getSector(sec.x + 1, sec.y), getSector(sec.x - 1, sec.y),
+        getSector(sec.x, sec.y + 1), getSector(sec.x, sec.y - 1)
       ];
 
       for (const n of neighbors) {
-        if (n && n.state === "unburnt" && Math.random() > 0.82) {
-          sectorsToBurn.push(n);
+        if (n && n.state === "unburnt") {
+          // Flame line slows to zero if Phos-Chek barrier layout exists in target zone
+          let spreadChance = n.hasRetardant ? 0.03 : 0.16;
+          if (Math.random() < spreadChance) {
+            sectorsToBurn.push(n);
+          }
         }
       }
     }
   }
 
-  // Flush operations arrays cleanly to the screen elements without cross-thread data collisions
-  for (const s of sectorsToBurn) {
-    s.state = "burning";
-    s.el.className = "sector state-burning";
-  }
-  for (const s of sectorsToExtinguish) {
-    s.state = "contained";
-    s.el.className = "sector state-contained";
-  }
+  // Flush modifications directly to nodes updates
+  for (const s of sectorsToBurn) { s.state = "burning"; s.el.className = "sector state-burning" + (s.hasRetardant ? " has-retardant" : ""); }
+  for (const s of sectorsToExtinguish) { s.state = "contained"; s.el.className = "sector state-contained" + (s.hasRetardant ? " has-retardant" : ""); }
 
-  // Update Telemetry Panel Numbers Dynamic Strings Safely
+  // Global Telemetry Counts Output Updates
   const totalBurning = sectors.filter(s => s.state === "burning").length;
   const totalContained = sectors.filter(s => s.state === "contained").length;
   
   document.getElementById("burnArea").textContent = `${totalBurning} Sectors`;
   document.getElementById("containedPct").textContent = `${totalContained} Sectors`;
 
-}, 800);
+  // Dynamic live background map location marker coordinate updates inside table row arrays
+  if (Math.random() > 0.7) rebuildRosterTable();
 
-// Input Control Binding Mechanics
-document.getElementById("pointIgnition").onclick = () => setTool("ignite", null, "pointIgnition");
-document.getElementById("lightningStrike").onclick = () => setTool("lightning", null, "lightningStrike");
+}, 700);
 
+// Input Selection Controls Panel Configuration Binding
 function setTool(toolName, unitType, buttonId) {
-  selectedTool = toolName;
-  selectedUnitType = unitType;
+  selectedTool = toolName; selectedUnitType = unitType;
   
   document.querySelectorAll("[data-unit]").forEach(b => b.classList.remove("active"));
   document.getElementById("pointIgnition").classList.remove("active");
   document.getElementById("lightningStrike").classList.remove("active");
+  document.getElementById("stagingBuild").classList.remove("active");
   
-  if (buttonId) {
-    document.getElementById(buttonId).classList.add("active");
-  }
+  if (buttonId) document.getElementById(buttonId).classList.add("active");
 }
+
+document.getElementById("pointIgnition").onclick = () => setTool("ignite", null, "pointIgnition");
+document.getElementById("lightningStrike").onclick = () => setTool("lightning", null, "lightningStrike");
+document.getElementById("stagingBuild").onclick = () => setTool("staging", null, "stagingBuild");
 
 Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
   btn.onclick = () => {
@@ -460,20 +623,16 @@ Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
   };
 });
 
-// Setup slider monitoring telemetry nodes
 function bindSlider(sliderId, displayId) {
-  const slider = document.getElementById(sliderId);
-  const display = document.getElementById(displayId);
-  if (slider && display) {
-    slider.addEventListener("input", () => display.textContent = slider.value);
-  }
+  const s = document.getElementById(sliderId); const d = document.getElementById(displayId);
+  if (s && d) s.addEventListener("input", () => d.textContent = s.value);
 }
 bindSlider("windSpeed", "windSpeedVal");
 bindSlider("windDir", "windDirVal");
 bindSlider("temperature", "tempVal");
-bindSlider("humidity", "humidityVal");
 
 document.getElementById("pointIgnition").classList.add("active");
+rebuildRosterTable();
 </script>
 </body>
 </html>
