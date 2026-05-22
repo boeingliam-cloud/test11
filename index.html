@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>INCIDENT COMMANDER: AUSTRALIA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #090d16;
+  font-family: "Courier New", monospace;
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(9, 13, 22, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 0 35px rgba(0,0,0,0.7);
+}
+
+.hud-title {
+  color: #f59e0b;
+  letter-spacing: 1px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #f59e0b;
+}
+
+.unit-btn.active {
+  border-color: #f59e0b;
+  background: rgba(245,158,11,0.2);
+}
+</style>
+</head>
+<body>
+
+<canvas id="sim"></canvas>
+
+<div class="absolute top-0 left-0 right-0 h-24 glass flex items-center px-6 z-20 text-slate-200 justify-between">
+  <div class="flex items-center space-x-4">
+    <div>
+      <div class="text-xl font-bold hud-title">INCIDENT COMMANDER: AUSTRALIA</div>
+      <div class="text-xs text-slate-400">STATE INCIDENT CONTROL CENTRE | AIIMS ENGINE v2.8</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-5 gap-6 w-2/3 text-xs">
+    <div>
+      <div class="flex justify-between"><span>Wind Speed</span><span id="windSpeedVal" class="text-amber-400 font-bold">35</span><span class="text-slate-500">km/h</span></div>
+      <input id="windSpeed" type="range" min="0" max="100" value="35">
+    </div>
+
+    <div>
+      <div class="flex justify-between"><span>Wind Direction</span><span id="windDirVal" class="text-cyan-400 font-bold">45</span><span class="text-slate-500">°</span></div>
+      <input id="windDir" type="range" min="0" max="360" value="45">
+    </div>
+
+    <div>
+      <div class="flex justify-between"><span>Temperature</span><span id="tempVal" class="text-orange-400 font-bold">38</span><span class="text-slate-500">°C</span></div>
+      <input id="temperature" type="range" min="15" max="45" value="38">
+    </div>
+
+    <div>
+      <div class="flex justify-between"><span>Humidity</span><span id="humidityVal" class="text-blue-400 font-bold">12</span><span class="text-slate-500">%</span></div>
+      <input id="humidity" type="range" min="5" max="80" value="12">
+    </div>
+
+    <div class="flex flex-col justify-center items-end border-l border-slate-700/50 pl-4">
+      <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Fire Danger Rating</div>
+      <div id="fdiDisplay" class="text-3xl font-black text-red-500 tracking-tighter">EXTREME</div>
+    </div>
+  </div>
+</div>
+
+<div class="absolute top-28 left-1/2 -translate-x-1/2 z-30 glass px-4 py-1.5 rounded-full text-[11px] text-slate-400 font-semibold uppercase tracking-wider border border-slate-700/30">
+  Mouse Left-Click = Interact | Mousewheel = Zoom | Right-Click Drag = Pan Tactical Map
+</div>
+
+<div class="absolute top-28 left-4 w-80 glass rounded-2xl p-4 z-20 text-slate-200 space-y-4">
+  <div>
+    <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">ENVIRONMENTAL PROFILE</div>
+    <div class="mb-3 text-xs">
+      <div class="flex justify-between mb-1"><span>Fuel Load</span><span id="fuelLoadVal" class="font-bold text-amber-500">18</span><span class="text-slate-500">t/ha</span></div>
+      <input id="fuelLoad" type="range" min="5" max="35" value="18">
+    </div>
+    <div class="text-xs">
+      <div class="flex justify-between mb-1"><span>Grass Curing</span><span id="curingVal" class="font-bold text-amber-500">85</span><span class="text-slate-500">%</span></div>
+      <input id="curing" type="range" min="0" max="100" value="85">
+    </div>
+  </div>
+
+  <div>
+    <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">TACTICAL IGNITION</div>
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <button id="pointIgnition" class="bg-orange-800/40 hover:bg-orange-700/60 border border-orange-500/40 rounded-lg p-2 font-bold transition-all text-orange-300">Point Ignition</button>
+      <button id="lineIgnition" class="bg-red-900/40 hover:bg-red-800/60 border border-red-500/40 rounded-lg p-2 font-bold transition-all text-red-300">Lightning Strike</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">RESOURCE DISPATCH (AIIMS)</div>
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <button data-unit="striker" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
+        <span class="font-bold block text-sky-400">Light Unit</span>
+        <span class="text-[10px] text-slate-400 block mt-0.5">Striker - Quick Attack</span>
+      </button>
+      <button data-unit="tanker" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
+        <span class="font-bold block text-red-400">Heavy Tanker</span>
+        <span class="text-[10px] text-slate-400 block mt-0.5">Cat 1 Heavy Appliance</span>
+      </button>
+      <button data-unit="dozer" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
+        <span class="font-bold block text-amber-400">Bulldozer</span>
+        <span class="text-[10px] text-slate-400 block mt-0.5">Heavy Firebreak Line</span>
+      </button>
+      <button data-unit="bomber" class="unit-btn border border-slate-700 hover:bg-slate-800/50 rounded-lg p-2 text-left transition-all">
+        <span class="font-bold block text-purple-400">Fixed Wing</span>
+        <span class="text-[10px] text-slate-400 block mt-0.5">Retardant Drop Run</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="absolute top-28 right-4 w-80 glass rounded-2xl p-4 z-20 text-slate-200 space-y-4">
+  <div>
+    <div class="hud-title font-bold text-sm border-b border-slate-700/50 pb-1 mb-3">INCIDENT MONITOR</div>
+    <table class="w-full text-xs space-y-2">
+      <tr class="h-8 border-b border-slate-800/50">
+        <td class="text-slate-400 font-medium">Total Affected Area</td>
+        <td class="text-right font-bold text-orange-400 text-sm" id="burnArea">0.0 ha</td>
+      </tr>
+      <tr class="h-8 border-b border-slate-800/50">
+        <td class="text-slate-400 font-medium">Contained Line</td>
+        <td class="text-right font-bold text-emerald-400 text-sm" id="containedPct">100%</td>
+      </tr>
+      <tr class="h-8">
+        <td class="text-slate-400 font-medium">Active Fleet Assets</td>
+        <td class="text-right font-bold text-cyan-400 text-sm" id="unitCount">0 Available</td>
+      </tr>
+    </table>
+  </div>
+  
+  <div class="border-t border-slate-700/50 pt-2">
+    <div class="text-[10px] uppercase text-slate-400 font-bold mb-2">Resource Status Logistics Log</div>
+    <div id="logisticsLog" class="h-32 overflow-y-auto text-[10px] text-slate-500 space-y-1 pr-1 font-mono">
+      <div>[SYSTEM] Force-bypassing canvas frame restrictions. Sandbox maps active.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("sim");
+const ctx = canvas.getContext("2d");
+
+// Solid safe-fallback sizing routine to prevent file:// protocol NaN window sizing bugs
+function resize() {
+  canvas.width = window.innerWidth || 1920;
+  canvas.height = window.innerHeight || 1080;
+}
+resize();
+window.addEventListener("resize", resize);
+
+const GRID = 100; 
+const cellSize = 18;
+const worldW = GRID * cellSize;
+const worldH = GRID * cellSize;
+
+// Force explicit, static starting coordinate anchors
+const camera = { x: worldW / 2, y: worldH / 2, zoom: 0.65 };
+let dragging = false; let dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
+
+function worldToScreen(wx, wy) {
+  return {
+    x: (wx - camera.x) * camera.zoom + (canvas.width / 2),
+    y: (wy - camera.y) * camera.zoom + (canvas.height / 2)
+  };
+}
+
+function screenToWorld(sx, sy) {
+  return {
+    x: ((sx - (canvas.width / 2)) / camera.zoom) + camera.x,
+    y: ((sy - (canvas.height / 2)) / camera.zoom) + camera.y
+  };
+}
+
+const grid = [];
+const waterSources = [];
+
+const weather = { windSpeed: 35, windDir: 45, temperature: 38, humidity: 12 };
+const fuels = { fuelLoad: 18, curing: 85 };
+
+// Structural map generation loop with boosted base color profiles
+for (let y = 0; y < GRID; y++) {
+  const row = [];
+  for (let x = 0; x < GRID; x++) {
+    const baseElevation = 100 + 
+      Math.sin(x * 0.1) * Math.cos(y * 0.1) * 60 + 
+      Math.sin(x * 0.25) * 15;
+
+    let isWater = false;
+    if ((x > 15 && x < 25 && y > 20 && y < 30) || 
+        (x > 75 && x < 85 && y > 65 && y < 75) ||
+        (x > 15 && x < 25 && y > 70 && y < 80)) {
+      isWater = true;
+    }
+    
+    let state = isWater ? "water" : "unburnt";
+    if (isWater) {
+      waterSources.push({ x: x, y: y });
+    }
+
+    row.push({
+      x, y,
+      elevation: isWater ? 20 : baseElevation,
+      state: state,
+      burnIntensity: 0,
+      exposure: 0,
+      retardant: 0
+    });
+  }
+  grid.push(row);
+}
+
+function pushLog(text) {
+  const logBox = document.getElementById("logisticsLog");
+  if (!logBox) return;
+  const timeStr = new Date().toTimeString().split(' ')[0];
+  logBox.innerHTML = `<div>[${timeStr}] ${text}</div>` + logBox.innerHTML;
+  if(logBox.children.length > 25) logBox.removeChild(logBox.lastChild);
+}
+
+function bindInput(id, obj, key, valId) {
+  const el = document.getElementById(id);
+  const vEl = document.getElementById(valId);
+  if(!el || !vEl) return;
+  el.addEventListener("input", () => {
+    obj[key] = Number(el.value);
+    vEl.textContent = el.value;
+    updateFDIUI();
+  });
+}
+bindInput("windSpeed", weather, "windSpeed", "windSpeedVal");
+bindInput("windDir", weather, "windDir", "windDirVal");
+bindInput("temperature", weather, "temperature", "tempVal");
+bindInput("humidity", weather, "humidity", "humidityVal");
+bindInput("fuelLoad", fuels, "fuelLoad", "fuelLoadVal");
+bindInput("curing", fuels, "curing", "curingVal");
+
+function calculateFDI() {
+  return Math.round((weather.temperature * 1.6) + (weather.windSpeed * 1.1) + (100 - weather.humidity) * 0.7);
+}
+
+function updateFDIUI() {
+  const fdi = calculateFDI();
+  const display = document.getElementById("fdiDisplay");
+  if(!display) return;
+  if (fdi < 12) { display.textContent = "LOW"; display.className = "text-3xl font-black text-green-500"; }
+  else if (fdi < 24) { display.textContent = "MODERATE"; display.className = "text-3xl font-black text-blue-400"; }
+  else if (fdi < 50) { display.textContent = "HIGH"; display.className = "text-3xl font-black text-yellow-500"; }
+  else if (fdi < 100) { display.textContent = "EXTREME"; display.className = "text-3xl font-black text-orange-500"; }
+  else { display.textContent = "CATASTROPHIC"; display.className = "text-3xl font-black text-red-600 animate-pulse"; }
+}
+updateFDIUI();
+
+let currentTool = "ignite";
+let currentUnitType = null;
+const units = [];
+
+const unitTemplates = {
+  striker: { speed: 1.4, waterMax: 500, suppression: 0.4, color: "#38bdf8", label: "Striker" },
+  tanker: { speed: 0.8, waterMax: 3500, suppression: 0.8, color: "#ef4444", label: "Heavy Tanker" },
+  dozer: { speed: 0.3, waterMax: 0, suppression: 0.5, color: "#facc15", label: "Bulldozer" },
+  bomber: { speed: 3.5, waterMax: 4000, suppression: 2.2, color: "#c084fc", label: "Fixed Wing Bomber" }
+};
+
+function inside(x, y) { return x >= 0 && y >= 0 && x < GRID && y < GRID; }
+
+function igniteCell(x, y) {
+  if (!inside(x, y)) return;
+  const c = grid[y][x];
+  if (c.state === "unburnt" || c.state === "contained") {
+    c.state = "burning";
+    c.burnIntensity = 0.1;
+    c.exposure = 10;
+  }
+}
+
+function curingFactor(c) {
+  if (c < 20) return 0;
+  return 1.036 / (1 + 103.989 * Math.exp(-0.0996 * (c - 20)));
+}
+
+function windFactor(dx, dy) {
+  const rad = weather.windDir * Math.PI / 180;
+  const wx = Math.cos(rad); const wy = Math.sin(rad);
+  const length = Math.hypot(dx, dy) || 1;
+  const ndx = dx / length; const ndy = dy / length;
+  const dot = (ndx * wx + ndy * wy);
+  const base = 0.054 + (0.3575 * Math.pow(weather.windSpeed, 0.844));
+  return base * Math.max(0.15, 1.0 + dot * 1.5);
+}
+
+function slopeFactor(e1, e2) {
+  const rise = e2 - e1;
+  const theta = Math.atan2(rise, cellSize) * 180 / Math.PI;
+  if (theta <= 0) return Math.max(0.2, Math.exp(0.03 * theta));
+  return Math.min(10, Math.exp(0.0693 * theta));
+}
+
+function updateSimulationEngine() {
+  const newIgnitions = [];
+  const Cc = curingFactor(fuels.curing);
+
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const cell = grid[y][x];
+      if (cell.state !== "burning") {
+        if (cell.retardant > 0) cell.retardant -= 0.005;
+        continue;
+      }
+
+      cell.burnIntensity += 0.004;
+      if (cell.burnIntensity > 2.0) {
+        cell.state = "burnt";
+        continue;
+      }
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx; const ny = y + dy;
+          if (!inside(nx, ny)) continue;
+
+          const target = grid[ny][nx];
+          if (target.state !== "unburnt" && target.state !== "contained") continue;
+
+          const Wf = windFactor(dx, dy);
+          const Sf = slopeFactor(cell.elevation, target.elevation);
+          
+          // CRITICAL SLOW SPREAD FIX: Multiplied rate of spread metric by 0.035 down from 0.09 (60%+ Slower tactical scaling)
+          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 4.5) * 0.035;
+          
+          if (target.retardant > 0) ros *= 0.10;
+          if (target.state === "contained") ros *= 0.03;
+
+          target.exposure += ros;
+          if (target.exposure > 5.0) {
+            newIgnitions.push({ x: nx, y: ny });
+          }
+        }
+      }
+    }
+  }
+
+  for (const ign of newIgnitions) {
+    igniteCell(ign.x, ign.y);
+  }
+
+  for (const u of units) {
+    const t = unitTemplates[u.type];
+    
+    if (u.mode === "refilling") {
+      let nextW = waterSources.reduce((prev, curr) => 
+        Math.hypot(curr.x - u.x, curr.y - u.y) < Math.hypot(prev.x - u.x, prev.y - u.y) ? curr : prev
+      , waterSources[0]);
+
+      const dist = Math.hypot(nextW.x - u.x, nextW.y - u.y);
+      if (dist < 1.2) {
+        u.water += 200;
+        if (u.water >= t.waterMax) {
+          u.water = t.waterMax;
+          u.mode = "suppressing";
+          pushLog(`${t.label} refilled and returning to sector line.`);
+        }
+      } else {
+        u.x += ((nextW.x - u.x) / dist) * t.speed;
+        u.y += ((nextW.y - u.y) / dist) * t.speed;
+      }
+      continue;
+    }
+
+    const targetDist = Math.hypot(u.targetX - u.x, u.targetY - u.y);
+    if (targetDist > 0.4) {
+      u.x += ((u.targetX - u.x) / targetDist) * t.speed;
+      u.y += ((u.targetY - u.y) / targetDist) * t.speed;
+    }
+
+    const cx = Math.floor(u.x); const cy = Math.floor(u.y);
+    if (inside(cx, cy)) {
+      if (u.type === "dozer") {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = cx + dx; const ny = cy + dy;
+            if (inside(nx, ny) && grid[ny][nx].state === "unburnt") {
+              grid[ny][nx].state = "contained";
+              grid[ny][nx].exposure = 0;
+            }
+          }
+        }
+      } else if (u.type === "bomber") {
+        if (targetDist <= 1.2 && u.water > 0) {
+          pushLog(`Fixed Wing Drop deployed line containment layers.`);
+          u.water = 0; 
+          u.targetX = u.homeX; u.targetY = u.homeY;
+          
+          for (let i = -5; i <= 5; i++) {
+            const rx = Math.floor(cx + (Math.random() - 0.5) * 8);
+            const ry = Math.floor(cy + (Math.random() - 0.5) * 8);
+            if (inside(rx, ry)) grid[ry][rx].retardant = 6.0;
+          }
+        }
+        if (u.water === 0 && targetDist <= 1.5) {
+          u.water = t.waterMax;
+          pushLog(`Fixed Wing Base rearmed retardant arrays.`);
+        }
+      } else {
+        if (u.water <= 0 && t.waterMax > 0) {
+          u.mode = "refilling";
+          pushLog(`${t.label} supply depleted. Routing to dam.`);
+          continue;
+        }
+
+        let suppressed = false;
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const nx = cx + dx; const ny = cy + dy;
+            if (inside(nx, ny) && grid[ny][nx].state === "burning") {
+              grid[ny][nx].burnIntensity -= t.suppression;
+              if (grid[ny][nx].burnIntensity <= 0) {
+                grid[ny][nx].state = "contained";
+              }
+              suppressed = true;
+            }
+          }
+        }
+        if (suppressed && t.waterMax > 0) u.water -= 8;
+      }
+    }
+  }
+}
+
+function drawMap() {
+  // Clear layout backdrop with high clarity anchor tones
+  ctx.fillStyle = "#090d16";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const visibleMinX = Math.max(0, Math.floor(camera.x - canvas.width / camera.zoom / 2 / cellSize) - 1);
+  const visibleMaxX = Math.min(GRID, Math.ceil(camera.x + canvas.width / camera.zoom / 2 / cellSize) + 1);
+  const visibleMinY = Math.max(0, Math.floor(camera.y - canvas.height / camera.zoom / 2 / cellSize) - 1);
+  const visibleMaxY = Math.min(GRID, Math.ceil(camera.y + canvas.height / camera.zoom / 2 / cellSize) + 1);
+
+  const dSize = cellSize * camera.zoom + 0.6;
+
+  for (let y = visibleMinY; y < visibleMaxY; y++) {
+    for (let x = visibleMinX; x < visibleMaxX; x++) {
+      const cell = grid[y][x];
+      const screen = worldToScreen(x * cellSize, y * cellSize);
+
+      if (cell.state === "water") {
+        ctx.fillStyle = "#2563eb"; 
+      } else if (cell.state === "burnt") {
+        ctx.fillStyle = "#141923"; 
+      } else if (cell.state === "contained") {
+        ctx.fillStyle = "#047857"; 
+      } else {
+        // Boosted brightness range factor matrix profiles to ensure full grid visibilities
+        const heightMapping = (cell.elevation - 30) / 200;
+        let r = Math.floor(45 + heightMapping * 45);
+        let g = Math.floor(65 + heightMapping * 55);
+        let b = Math.floor(50 + heightMapping * 40);
+        
+        if (cell.retardant > 0) { r += 60; b += 30; }
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+      }
+
+      ctx.fillRect(screen.x, screen.y, dSize, dSize);
+
+      if (Math.floor(cell.elevation) % 35 < 3.0 && cell.state !== "water") {
+        ctx.fillStyle = "rgba(255,255,255,0.09)";
+        ctx.fillRect(screen.x, screen.y, dSize, dSize);
+      }
+
+      if (cell.state === "burning") {
+        ctx.fillStyle = "rgba(249, 115, 22, 0.5)";
+        ctx.fillRect(screen.x, screen.y, dSize, dSize);
+        
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const pulse = 1.0 + Math.sin(Date.now() * 0.005 + x) * 0.15;
+        const grad = ctx.createRadialGradient(
+          screen.x + dSize/2, screen.y + dSize/2, 0,
+          screen.x + dSize/2, screen.y + dSize/2, dSize * 3.2 * pulse
+        );
+        grad.addColorStop(0, "#ffffff");
+        grad.addColorStop(0.25, "#f97316");
+        grad.addColorStop(1, "rgba(220,38,38,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(screen.x + dSize/2, screen.y + dSize/2, dSize * 3.2 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+}
+
+function drawUnits() {
+  for (const u of units) {
+    const screen = worldToScreen(u.x * cellSize, u.y * cellSize);
+    const rad = 8 * camera.zoom;
+
+    ctx.save();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = u.color;
+    ctx.fillStyle = u.color;
+
+    if (u.type === "bomber") {
+      ctx.beginPath();
+      ctx.moveTo(screen.x, screen.y - rad * 1.5);
+      ctx.lineTo(screen.x + rad * 1.5, screen.y + rad * 1.2);
+      ctx.lineTo(screen.x - rad * 1.5, screen.y + rad * 1.2);
+      ctx.closePath();
+      ctx.fill();
+    } else if (u.type === "dozer") {
+      ctx.fillRect(screen.x - rad, screen.y - rad, rad * 2, rad * 2);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(screen.x - rad, screen.y - rad, rad * 2, rad * 2);
+    } else {
+      ctx.beginPath();
+      ctx.arc(screen.x, screen.y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (u.mode === "refilling") {
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 10px monospace";
+      ctx.fillText("REFILLING", screen.x + rad + 4, screen.y + 3);
+    }
+    ctx.restore();
+  }
+}
+
+function updateTelemetryDisplay() {
+  let burning = 0; let contained = 0;
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      if (grid[y][x].state === "burning") burning++;
+      if (grid[y][x].state === "contained") contained++;
+    }
+  }
+  const burnAreaEl = document.getElementById("burnArea");
+  const containedPctEl = document.getElementById("containedPct");
+  const unitCountEl = document.getElementById("unitCount");
+
+  if(burnAreaEl) burnAreaEl.textContent = (burning * 0.15).toFixed(1) + " ha";
+  const total = burning + contained;
+  if(containedPctEl) containedPctEl.textContent = total === 0 ? "100%" : Math.round((contained / total) * 100) + "%";
+  if(unitCountEl) unitCountEl.textContent = `${units.length} Deployed`;
+}
+
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+canvas.addEventListener("mousedown", e => {
+  if (e.button === 1 || e.button === 2) {
+    dragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    camStartX = camera.x; camStartY = camera.y;
+    return;
+  }
+
+  const world = screenToWorld(e.clientX, e.clientY);
+  const gx = Math.floor(world.x / cellSize);
+  const gy = Math.floor(world.y / cellSize);
+
+  if (!inside(gx, gy)) return;
+
+  if (currentTool === "ignite") {
+    pushLog(`Emergency Comm: Point ignition confirmed at [${gx}, ${gy}].`);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        igniteCell(gx + dx, gy + dy);
+      }
+    }
+  } else if (currentTool === "lightning") {
+    pushLog(`Incident Warning: Lightning strike lines active.`);
+    for (let i = -6; i <= 6; i++) {
+      igniteCell(gx + i, gy + Math.floor((Math.random() - 0.5) * 4));
+    }
+  } else if (currentTool === "unit" && currentUnitType) {
+    const t = unitTemplates[currentUnitType];
+    if (currentUnitType === "bomber") {
+      units.push({
+        type: currentUnitType,
+        x: gx - 20, y: gy - 20,
+        homeX: gx - 20, homeY: gy - 20,
+        targetX: gx, targetY: gy,
+        water: t.waterMax, mode: "suppressing", color: t.color
+      });
+      pushLog(`AIIMS Command: Fixed Wing Air Tanker vector assigned.`);
+    } else {
+      units.push({
+        type: currentUnitType,
+        x: gx, y: gy,
+        targetX: gx, targetY: gy,
+        water: t.waterMax, mode: "suppressing", color: t.color
+      });
+      pushLog(`AIIMS Command: ${t.label} appliance sent to ground sector.`);
+    }
+  }
+});
+
+canvas.addEventListener("click", e => {
+  if (currentTool !== "unit" || !currentUnitType) {
+    if (e.button !== 0) return;
+    const world = screenToWorld(e.clientX, e.clientY);
+    const gx = Math.floor(world.x / cellSize);
+    const gy = Math.floor(world.y / cellSize);
+    
+    if (inside(gx, gy) && units.length > 0) {
+      let landUnits = units.filter(u => u.type !== "bomber" && u.mode !== "refilling");
+      if (landUnits.length > 0) {
+        let closest = landUnits.reduce((prev, curr) => 
+          Math.hypot(curr.x - gx, curr.y - gy) < Math.hypot(prev.x - gx, prev.y - gy) ? curr : prev
+        );
+        closest.targetX = gx; closest.targetY = gy;
+        pushLog(`Redirecting closest asset line to coordinate: [${gx}, ${gy}].`);
+      }
+    }
+  }
+});
+
+window.addEventListener("mouseup", () => dragging = false);
+
+window.addEventListener("mousemove", e => {
+  if (!dragging) return;
+  camera.x = camStartX - (e.clientX - dragStartX) / camera.zoom;
+  camera.y = camStartY - (e.clientY - dragStartY) / camera.zoom;
+});
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  const f = e.deltaY > 0 ? 0.88 : 1.12;
+  const wBefore = screenToWorld(e.clientX, e.clientY);
+  camera.zoom = Math.max(0.2, Math.min(4, camera.zoom * f));
+  const wAfter = screenToWorld(e.clientX, e.clientY);
+  camera.x += wBefore.x - wAfter.x;
+  camera.y += wBefore.y - wAfter.y;
+}, { passive: false });
+
+document.getElementById("pointIgnition").onclick = () => { currentTool = "ignite"; currentUnitType = null; resetButtons(); document.getElementById("pointIgnition").classList.add("bg-orange-600"); };
+document.getElementById("lineIgnition").onclick = () => { currentTool = "lightning"; currentUnitType = null; resetButtons(); document.getElementById("lineIgnition").classList.add("bg-red-600"); };
+
+function resetButtons() {
+  document.querySelectorAll(".unit-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("pointIgnition").classList.remove("bg-orange-600");
+  document.getElementById("lineIgnition").classList.remove("bg-red-600");
+}
+
+Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
+  btn.onclick = () => {
+    resetButtons();
+    btn.classList.add("active");
+    currentTool = "unit";
+    currentUnitType = btn.dataset.unit;
+  };
+});
+
+let lastTime = Date.now();
+function gameLoop() {
+  const now = Date.now();
+  if (now - lastTime >= 95) { // Adjusted tick rates for stable local engine rendering loops
+    updateSimulationEngine();
+    lastTime = now;
+  }
+
+  drawMap();
+  drawUnits();
+  updateTelemetryDisplay();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// Kick off continuous core ticks
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
