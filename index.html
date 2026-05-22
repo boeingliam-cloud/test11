@@ -11,20 +11,22 @@ html, body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #090d16;
+  background-color: #060911;
   font-family: "Courier New", monospace;
   width: 100%;
   height: 100%;
 }
 
-canvas {
-  display: block;
-  position: absolute;
+/* Hard fixed position to force rendering space regardless of host framing */
+#sim {
+  position: fixed !important;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 1 !important;
+  display: block !important;
+  background-color: #060911;
 }
 
 .glass {
@@ -48,17 +50,23 @@ input[type="range"] {
   border-color: #f59e0b;
   background: rgba(245,158,11,0.2);
 }
+
+.ui-layer {
+  position: relative;
+  z-index: 20 !important;
+  pointer-events: auto;
+}
 </style>
 </head>
 <body>
 
 <canvas id="sim"></canvas>
 
-<div class="absolute top-0 left-0 right-0 h-24 glass flex items-center px-6 z-20 text-slate-200 justify-between">
+<div class="absolute top-0 left-0 right-0 h-24 glass flex items-center px-6 text-slate-200 justify-between ui-layer">
   <div class="flex items-center space-x-4">
     <div>
       <div class="text-xl font-bold hud-title">INCIDENT COMMANDER: AUSTRALIA</div>
-      <div class="text-xs text-slate-400">STATE INCIDENT CONTROL CENTRE | AIIMS ENGINE v2.8</div>
+      <div class="text-xs text-slate-400">STATE INCIDENT CONTROL CENTRE | AIIMS ENGINE v2.9</div>
     </div>
   </div>
 
@@ -90,11 +98,11 @@ input[type="range"] {
   </div>
 </div>
 
-<div class="absolute top-28 left-1/2 -translate-x-1/2 z-30 glass px-4 py-1.5 rounded-full text-[11px] text-slate-400 font-semibold uppercase tracking-wider border border-slate-700/30">
+<div class="absolute top-28 left-1/2 -translate-x-1/2 glass px-4 py-1.5 rounded-full text-[11px] text-slate-400 font-semibold uppercase tracking-wider border border-slate-700/30 ui-layer">
   Mouse Left-Click = Interact | Mousewheel = Zoom | Right-Click Drag = Pan Tactical Map
 </div>
 
-<div class="absolute top-28 left-4 w-80 glass rounded-2xl p-4 z-20 text-slate-200 space-y-4">
+<div class="absolute top-28 left-4 w-80 glass rounded-2xl p-4 text-slate-200 space-y-4 ui-layer">
   <div>
     <div class="hud-title font-bold text-sm mb-2 border-b border-slate-700/50 pb-1">ENVIRONMENTAL PROFILE</div>
     <div class="mb-3 text-xs">
@@ -138,7 +146,7 @@ input[type="range"] {
   </div>
 </div>
 
-<div class="absolute top-28 right-4 w-80 glass rounded-2xl p-4 z-20 text-slate-200 space-y-4">
+<div class="absolute top-28 right-4 w-80 glass rounded-2xl p-4 text-slate-200 space-y-4 ui-layer">
   <div>
     <div class="hud-title font-bold text-sm border-b border-slate-700/50 pb-1 mb-3">INCIDENT MONITOR</div>
     <table class="w-full text-xs space-y-2">
@@ -160,7 +168,7 @@ input[type="range"] {
   <div class="border-t border-slate-700/50 pt-2">
     <div class="text-[10px] uppercase text-slate-400 font-bold mb-2">Resource Status Logistics Log</div>
     <div id="logisticsLog" class="h-32 overflow-y-auto text-[10px] text-slate-500 space-y-1 pr-1 font-mono">
-      <div>[SYSTEM] Force-bypassing canvas frame restrictions. Sandbox maps active.</div>
+      <div>[SYSTEM] Host dimensions initialized. Map rendering pipeline active.</div>
     </div>
   </div>
 </div>
@@ -169,20 +177,19 @@ input[type="range"] {
 const canvas = document.getElementById("sim");
 const ctx = canvas.getContext("2d");
 
-// Solid safe-fallback sizing routine to prevent file:// protocol NaN window sizing bugs
 function resize() {
-  canvas.width = window.innerWidth || 1920;
-  canvas.height = window.innerHeight || 1080;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 resize();
 window.addEventListener("resize", resize);
+window.addEventListener("load", resize);
 
 const GRID = 100; 
-const cellSize = 18;
+const cellSize = 22; // Slightly enlarged base cell sizing for easier targeting click paths
 const worldW = GRID * cellSize;
 const worldH = GRID * cellSize;
 
-// Force explicit, static starting coordinate anchors
 const camera = { x: worldW / 2, y: worldH / 2, zoom: 0.65 };
 let dragging = false; let dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
 
@@ -336,7 +343,7 @@ function updateSimulationEngine() {
         continue;
       }
 
-      cell.burnIntensity += 0.004;
+      cell.burnIntensity += 0.003;
       if (cell.burnIntensity > 2.0) {
         cell.state = "burnt";
         continue;
@@ -354,8 +361,8 @@ function updateSimulationEngine() {
           const Wf = windFactor(dx, dy);
           const Sf = slopeFactor(cell.elevation, target.elevation);
           
-          // CRITICAL SLOW SPREAD FIX: Multiplied rate of spread metric by 0.035 down from 0.09 (60%+ Slower tactical scaling)
-          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 4.5) * 0.035;
+          // SIGNIFICANT SLOW DOWN RATE: Adjusted down further to 0.009 (75% reduction for strategic pace)
+          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 4.5) * 0.009;
           
           if (target.retardant > 0) ros *= 0.10;
           if (target.state === "contained") ros *= 0.03;
@@ -457,8 +464,7 @@ function updateSimulationEngine() {
 }
 
 function drawMap() {
-  // Clear layout backdrop with high clarity anchor tones
-  ctx.fillStyle = "#090d16";
+  ctx.fillStyle = "#060911";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const visibleMinX = Math.max(0, Math.floor(camera.x - canvas.width / camera.zoom / 2 / cellSize) - 1);
@@ -480,11 +486,11 @@ function drawMap() {
       } else if (cell.state === "contained") {
         ctx.fillStyle = "#047857"; 
       } else {
-        // Boosted brightness range factor matrix profiles to ensure full grid visibilities
+        // Significantly boosted green visibility palettes to contrast UI panels cleanly
         const heightMapping = (cell.elevation - 30) / 200;
-        let r = Math.floor(45 + heightMapping * 45);
-        let g = Math.floor(65 + heightMapping * 55);
-        let b = Math.floor(50 + heightMapping * 40);
+        let r = Math.floor(35 + heightMapping * 50);
+        let g = Math.floor(75 + heightMapping * 65);
+        let b = Math.floor(40 + heightMapping * 50);
         
         if (cell.retardant > 0) { r += 60; b += 30; }
         ctx.fillStyle = `rgb(${r},${g},${b})`;
@@ -493,7 +499,7 @@ function drawMap() {
       ctx.fillRect(screen.x, screen.y, dSize, dSize);
 
       if (Math.floor(cell.elevation) % 35 < 3.0 && cell.state !== "water") {
-        ctx.fillStyle = "rgba(255,255,255,0.09)";
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
         ctx.fillRect(screen.x, screen.y, dSize, dSize);
       }
 
@@ -686,7 +692,7 @@ Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
 let lastTime = Date.now();
 function gameLoop() {
   const now = Date.now();
-  if (now - lastTime >= 95) { // Adjusted tick rates for stable local engine rendering loops
+  if (now - lastTime >= 70) { 
     updateSimulationEngine();
     lastTime = now;
   }
@@ -698,7 +704,6 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// Kick off continuous core ticks
 requestAnimationFrame(gameLoop);
 </script>
 </body>
