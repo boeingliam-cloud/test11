@@ -17,16 +17,20 @@ html, body {
   height: 100%;
 }
 
-/* Hard fixed position to force rendering space regardless of host framing */
-#sim {
-  position: fixed !important;
+/* Wrapper layer ensures the canvas has a real structural parent box to read bounds from */
+.sim-container {
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 1 !important;
-  display: block !important;
-  background-color: #060911;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#sim {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .glass {
@@ -52,21 +56,22 @@ input[type="range"] {
 }
 
 .ui-layer {
-  position: relative;
-  z-index: 20 !important;
+  z-index: 20;
   pointer-events: auto;
 }
 </style>
 </head>
 <body>
 
-<canvas id="sim"></canvas>
+<div class="sim-container">
+  <canvas id="sim"></canvas>
+</div>
 
 <div class="absolute top-0 left-0 right-0 h-24 glass flex items-center px-6 text-slate-200 justify-between ui-layer">
   <div class="flex items-center space-x-4">
     <div>
       <div class="text-xl font-bold hud-title">INCIDENT COMMANDER: AUSTRALIA</div>
-      <div class="text-xs text-slate-400">STATE INCIDENT CONTROL CENTRE | AIIMS ENGINE v2.9</div>
+      <div class="text-xs text-slate-400">STATE INCIDENT CONTROL CENTRE | AIIMS ENGINE v3.0</div>
     </div>
   </div>
 
@@ -168,7 +173,7 @@ input[type="range"] {
   <div class="border-t border-slate-700/50 pt-2">
     <div class="text-[10px] uppercase text-slate-400 font-bold mb-2">Resource Status Logistics Log</div>
     <div id="logisticsLog" class="h-32 overflow-y-auto text-[10px] text-slate-500 space-y-1 pr-1 font-mono">
-      <div>[SYSTEM] Host dimensions initialized. Map rendering pipeline active.</div>
+      <div>[SYSTEM] Topology verification active. Simulation ready.</div>
     </div>
   </div>
 </div>
@@ -177,20 +182,25 @@ input[type="range"] {
 const canvas = document.getElementById("sim");
 const ctx = canvas.getContext("2d");
 
+// Fallback logic protection: Checks client bounds; if browser surfaces zero, safely matches viewport size
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = canvas.parentElement.clientWidth || window.innerWidth || 1920;
+  canvas.height = canvas.parentElement.clientHeight || window.innerHeight || 1080;
 }
 resize();
 window.addEventListener("resize", resize);
-window.addEventListener("load", resize);
+window.addEventListener("load", () => {
+  resize();
+  pushLog("Viewport matrix fully locked and verified.");
+});
 
 const GRID = 100; 
-const cellSize = 22; // Slightly enlarged base cell sizing for easier targeting click paths
+const cellSize = 24; 
 const worldW = GRID * cellSize;
 const worldH = GRID * cellSize;
 
-const camera = { x: worldW / 2, y: worldH / 2, zoom: 0.65 };
+// Force explicit, centralized screen offsets
+const camera = { x: worldW / 2, y: worldH / 2, zoom: 0.5 };
 let dragging = false; let dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
 
 function worldToScreen(wx, wy) {
@@ -213,18 +223,18 @@ const waterSources = [];
 const weather = { windSpeed: 35, windDir: 45, temperature: 38, humidity: 12 };
 const fuels = { fuelLoad: 18, curing: 85 };
 
-// Structural map generation loop with boosted base color profiles
+// Map data instantiation
 for (let y = 0; y < GRID; y++) {
   const row = [];
   for (let x = 0; x < GRID; x++) {
     const baseElevation = 100 + 
-      Math.sin(x * 0.1) * Math.cos(y * 0.1) * 60 + 
-      Math.sin(x * 0.25) * 15;
+      Math.sin(x * 0.15) * Math.cos(y * 0.15) * 50 + 
+      Math.sin(x * 0.3) * 10;
 
     let isWater = false;
-    if ((x > 15 && x < 25 && y > 20 && y < 30) || 
-        (x > 75 && x < 85 && y > 65 && y < 75) ||
-        (x > 15 && x < 25 && y > 70 && y < 80)) {
+    if ((x > 12 && x < 28 && y > 15 && y < 32) || 
+        (x > 70 && x < 88 && y > 60 && y < 78) ||
+        (x > 20 && x < 35 && y > 65 && y < 80)) {
       isWater = true;
     }
     
@@ -235,7 +245,7 @@ for (let y = 0; y < GRID; y++) {
 
     row.push({
       x, y,
-      elevation: isWater ? 20 : baseElevation,
+      elevation: isWater ? 10 : baseElevation,
       state: state,
       burnIntensity: 0,
       exposure: 0,
@@ -343,7 +353,7 @@ function updateSimulationEngine() {
         continue;
       }
 
-      cell.burnIntensity += 0.003;
+      cell.burnIntensity += 0.002;
       if (cell.burnIntensity > 2.0) {
         cell.state = "burnt";
         continue;
@@ -361,8 +371,8 @@ function updateSimulationEngine() {
           const Wf = windFactor(dx, dy);
           const Sf = slopeFactor(cell.elevation, target.elevation);
           
-          // SIGNIFICANT SLOW DOWN RATE: Adjusted down further to 0.009 (75% reduction for strategic pace)
-          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 4.5) * 0.009;
+          // SPREAD METRIC CONTROL: Set to an even slower pace (0.005) for highly strategic game mechanics
+          let ros = Wf * Cc * Sf * (fuels.fuelLoad / 4.5) * 0.005;
           
           if (target.retardant > 0) ros *= 0.10;
           if (target.state === "contained") ros *= 0.03;
@@ -394,7 +404,7 @@ function updateSimulationEngine() {
         if (u.water >= t.waterMax) {
           u.water = t.waterMax;
           u.mode = "suppressing";
-          pushLog(`${t.label} refilled and returning to sector line.`);
+          pushLog(`${t.label} refilled and running to front.`);
         }
       } else {
         u.x += ((nextW.x - u.x) / dist) * t.speed;
@@ -423,7 +433,7 @@ function updateSimulationEngine() {
         }
       } else if (u.type === "bomber") {
         if (targetDist <= 1.2 && u.water > 0) {
-          pushLog(`Fixed Wing Drop deployed line containment layers.`);
+          pushLog(`Fixed Wing Drop deployed line layers.`);
           u.water = 0; 
           u.targetX = u.homeX; u.targetY = u.homeY;
           
@@ -440,7 +450,7 @@ function updateSimulationEngine() {
       } else {
         if (u.water <= 0 && t.waterMax > 0) {
           u.mode = "refilling";
-          pushLog(`${t.label} supply depleted. Routing to dam.`);
+          pushLog(`${t.label} supply depleted. Routing to water source.`);
           continue;
         }
 
@@ -480,26 +490,26 @@ function drawMap() {
       const screen = worldToScreen(x * cellSize, y * cellSize);
 
       if (cell.state === "water") {
-        ctx.fillStyle = "#2563eb"; 
+        ctx.fillStyle = "#1e40af"; 
       } else if (cell.state === "burnt") {
-        ctx.fillStyle = "#141923"; 
+        ctx.fillStyle = "#111622"; 
       } else if (cell.state === "contained") {
-        ctx.fillStyle = "#047857"; 
+        ctx.fillStyle = "#065f46"; 
       } else {
-        // Significantly boosted green visibility palettes to contrast UI panels cleanly
-        const heightMapping = (cell.elevation - 30) / 200;
-        let r = Math.floor(35 + heightMapping * 50);
-        let g = Math.floor(75 + heightMapping * 65);
-        let b = Math.floor(40 + heightMapping * 50);
+        // Vibrant forest green styling matrix to guarantee visibility on dark monitors
+        const heightMapping = (cell.elevation - 50) / 150;
+        let r = Math.floor(20 + heightMapping * 35);
+        let g = Math.floor(95 + heightMapping * 45);
+        let b = Math.floor(30 + heightMapping * 35);
         
-        if (cell.retardant > 0) { r += 60; b += 30; }
+        if (cell.retardant > 0) { r += 70; b += 40; }
         ctx.fillStyle = `rgb(${r},${g},${b})`;
       }
 
       ctx.fillRect(screen.x, screen.y, dSize, dSize);
 
-      if (Math.floor(cell.elevation) % 35 < 3.0 && cell.state !== "water") {
-        ctx.fillStyle = "rgba(255,255,255,0.12)";
+      if (Math.floor(cell.elevation) % 25 < 2.0 && cell.state !== "water") {
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
         ctx.fillRect(screen.x, screen.y, dSize, dSize);
       }
 
@@ -509,17 +519,17 @@ function drawMap() {
         
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        const pulse = 1.0 + Math.sin(Date.now() * 0.005 + x) * 0.15;
+        const pulse = 1.0 + Math.sin(Date.now() * 0.006 + x) * 0.12;
         const grad = ctx.createRadialGradient(
           screen.x + dSize/2, screen.y + dSize/2, 0,
-          screen.x + dSize/2, screen.y + dSize/2, dSize * 3.2 * pulse
+          screen.x + dSize/2, screen.y + dSize/2, dSize * 3.5 * pulse
         );
         grad.addColorStop(0, "#ffffff");
-        grad.addColorStop(0.25, "#f97316");
-        grad.addColorStop(1, "rgba(220,38,38,0)");
+        grad.addColorStop(0.2, "#ea580c");
+        grad.addColorStop(1, "rgba(185,28,28,0)");
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(screen.x + dSize/2, screen.y + dSize/2, dSize * 3.2 * pulse, 0, Math.PI * 2);
+        ctx.arc(screen.x + dSize/2, screen.y + dSize/2, dSize * 3.5 * pulse, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -553,12 +563,6 @@ function drawUnits() {
       ctx.beginPath();
       ctx.arc(screen.x, screen.y, rad, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    if (u.mode === "refilling") {
-      ctx.fillStyle = "#38bdf8";
-      ctx.font = "bold 10px monospace";
-      ctx.fillText("REFILLING", screen.x + rad + 4, screen.y + 3);
     }
     ctx.restore();
   }
@@ -599,28 +603,28 @@ canvas.addEventListener("mousedown", e => {
   if (!inside(gx, gy)) return;
 
   if (currentTool === "ignite") {
-    pushLog(`Emergency Comm: Point ignition confirmed at [${gx}, ${gy}].`);
+    pushLog(`Incident Warning: Controlled burn ignition at [${gx}, ${gy}].`);
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         igniteCell(gx + dx, gy + dy);
       }
     }
   } else if (currentTool === "lightning") {
-    pushLog(`Incident Warning: Lightning strike lines active.`);
-    for (let i = -6; i <= 6; i++) {
-      igniteCell(gx + i, gy + Math.floor((Math.random() - 0.5) * 4));
+    pushLog(`Emergency Alert: Lightning strike line generated.`);
+    for (let i = -5; i <= 5; i++) {
+      igniteCell(gx + i, gy + Math.floor((Math.random() - 0.5) * 3));
     }
   } else if (currentTool === "unit" && currentUnitType) {
     const t = unitTemplates[currentUnitType];
     if (currentUnitType === "bomber") {
       units.push({
         type: currentUnitType,
-        x: gx - 20, y: gy - 20,
-        homeX: gx - 20, homeY: gy - 20,
+        x: gx - 15, y: gy - 15,
+        homeX: gx - 15, homeY: gy - 15,
         targetX: gx, targetY: gy,
         water: t.waterMax, mode: "suppressing", color: t.color
       });
-      pushLog(`AIIMS Command: Fixed Wing Air Tanker vector assigned.`);
+      pushLog(`AIIMS Control: Air drop vector dispatched.`);
     } else {
       units.push({
         type: currentUnitType,
@@ -628,7 +632,7 @@ canvas.addEventListener("mousedown", e => {
         targetX: gx, targetY: gy,
         water: t.waterMax, mode: "suppressing", color: t.color
       });
-      pushLog(`AIIMS Command: ${t.label} appliance sent to ground sector.`);
+      pushLog(`AIIMS Control: Mobile unit deployed to asset coordinates.`);
     }
   }
 });
@@ -647,7 +651,7 @@ canvas.addEventListener("click", e => {
           Math.hypot(curr.x - gx, curr.y - gy) < Math.hypot(prev.x - gx, prev.y - gy) ? curr : prev
         );
         closest.targetX = gx; closest.targetY = gy;
-        pushLog(`Redirecting closest asset line to coordinate: [${gx}, ${gy}].`);
+        pushLog(`Redirecting closest operational unit to line coordinate: [${gx}, ${gy}].`);
       }
     }
   }
@@ -663,9 +667,9 @@ window.addEventListener("mousemove", e => {
 
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
-  const f = e.deltaY > 0 ? 0.88 : 1.12;
+  const f = e.deltaY > 0 ? 0.85 : 1.15;
   const wBefore = screenToWorld(e.clientX, e.clientY);
-  camera.zoom = Math.max(0.2, Math.min(4, camera.zoom * f));
+  camera.zoom = Math.max(0.15, Math.min(5, camera.zoom * f));
   const wAfter = screenToWorld(e.clientX, e.clientY);
   camera.x += wBefore.x - wAfter.x;
   camera.y += wBefore.y - wAfter.y;
@@ -692,7 +696,7 @@ Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
 let lastTime = Date.now();
 function gameLoop() {
   const now = Date.now();
-  if (now - lastTime >= 70) { 
+  if (now - lastTime >= 60) { 
     updateSimulationEngine();
     lastTime = now;
   }
