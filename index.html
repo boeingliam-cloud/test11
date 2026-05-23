@@ -4,1063 +4,694 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>INCIDENT COMMANDER: AUSTRALIA</title>
-<style>
-  /* Embedded font fallbacks for local file use */
-  @import url('data:text/css,');
-</style>
-<style id="font-overrides">
-  /* Will be replaced by JS if fonts load, otherwise use fallbacks */
-</style>
-<style>
-:root {
-  --bg: #05080f;
-  --panel: rgba(7,12,22,0.97);
-  --border: rgba(255,255,255,0.07);
-  --border-accent: rgba(245,158,11,0.4);
-  --amber: #f59e0b;
-  --amber-dim: #92600a;
-  --cyan: #22d3ee;
-  --red: #ef4444;
-  --green: #10b981;
-  --purple: #a78bfa;
-  --orange: #f97316;
-  --text: #cbd5e1;
-  --text-muted: #475569;
-  --text-bright: #f1f5f9;
-  --fire1: #ff4500;
-  --fire2: #ff8c00;
-  --scan-line: rgba(255,255,255,0.012);
-}
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body {
-  width: 100%; height: 100%; overflow: hidden;
-  background: var(--bg);
-  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
-  color: var(--text);
-}
-
-/* CRT scan-line overlay */
-body::after {
-  content: '';
-  position: fixed; inset: 0; z-index: 9999;
-  pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan-line) 2px, var(--scan-line) 4px);
-}
-
-/* Vignette */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 9998; pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.7) 100%);
-}
-
-/* ── MAP ── */
-.map-viewport {
-  position: absolute; inset: 0; z-index: 1;
-  overflow: hidden; cursor: crosshair;
-}
-.map-viewport:active { cursor: grabbing; }
-
-#map-surface {
-  position: absolute; transform-origin: 0 0; user-select: none;
-  will-change: transform;
-  display: grid;
-  grid-template-columns: repeat(90, 28px);
-  grid-template-rows: repeat(90, 28px);
-  gap: 1px;
-  background: #030609;
-  padding: 20px;
-}
-
-.sector {
-  width: 28px; height: 28px; border-radius: 3px;
-  position: relative; transition: background 0.3s ease;
-}
-
-.state-unburnt { background: #0a140a; border: 1px solid #0e1a0e; }
-.state-water {
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-  border: 1px solid #3b82f6;
-  box-shadow: inset 0 0 10px rgba(59,130,246,0.3);
-}
-.state-contained {
-  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
-  border: 1px solid #10b981;
-  box-shadow: inset 0 0 6px rgba(16,185,129,0.2);
-}
-.state-burnt {
-  background: #06070a;
-  border: 1px solid #1e293b;
-}
-.state-staging {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 2px dashed #475569;
-}
-.state-fireline {
-  background: linear-gradient(135deg, #5c3a0a 0%, #3b2007 100%);
-  border: 1px solid #92400e;
-  box-shadow: inset 0 0 4px rgba(146,64,14,0.5);
-}
-.state-burning {
-  background: radial-gradient(ellipse at center, #ff6b00 0%, #c2290a 60%, #7f1d1d 100%);
-  border: 1px solid #ff4500;
-  animation: flicker 0.25s infinite alternate;
-  box-shadow: 0 0 10px #ff4500, 0 0 4px #ff8c00 inset;
-  z-index: 2;
-}
-@keyframes flicker {
-  0%   { transform: scale(0.93); filter: brightness(0.9); box-shadow: 0 0 8px #ff4500; }
-  100% { transform: scale(1.07); filter: brightness(1.4); box-shadow: 0 0 18px #ff6b00, 0 0 30px rgba(255,69,0,0.4); }
-}
-
-.state-flightpath-target::after {
-  content: ''; position: absolute; inset: 0;
-  background: rgba(167,139,250,0.25);
-  border: 2px dashed #a78bfa;
-  border-radius: 3px; z-index: 10; pointer-events: none;
-  animation: path-pulse 0.5s infinite alternate;
-}
-@keyframes path-pulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
-
-.has-retardant::before {
-  content: ''; position: absolute; inset: 2px;
-  border: 2px solid #ec4899;
-  background: rgba(236,72,153,0.15);
-  border-radius: 2px; pointer-events: none; z-index: 5;
-}
-
-.unit-marker {
-  position: absolute; width: 22px; height: 22px;
-  border-radius: 50%; border: 2px solid rgba(255,255,255,0.9);
-  transform: translate(-50%, -50%);
-  transition: left 0.5s cubic-bezier(0.16,1,0.3,1), top 0.5s cubic-bezier(0.16,1,0.3,1);
-  z-index: 50;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.6), 0 0 16px currentColor;
-  pointer-events: none;
-}
-.unit-marker::after {
-  content: '';
-  position: absolute; inset: 3px; border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-}
-
-.command-radius-ring {
-  position: absolute; border: 1px dashed rgba(250,204,21,0.4);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(250,204,21,0.03), transparent 70%);
-  transform: translate(-50%, -50%);
-  pointer-events: none; z-index: 30;
-  transition: left 0.5s ease, top 0.5s ease;
-  animation: ring-pulse 3s infinite ease-in-out;
-}
-@keyframes ring-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-/* ── UI LAYER ── */
-.ui-layer {
-  position: absolute; inset: 0; z-index: 10; pointer-events: none;
-}
-.ui-int { pointer-events: auto; }
-
-/* Panel base */
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 32px 64px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
-}
-.panel-border-top {
-  border-top: 2px solid var(--amber);
-}
-
-/* ── TOP HEADER BAR ── */
-#header {
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 72px; z-index: 100;
-  background: linear-gradient(180deg, rgba(5,8,15,0.99) 0%, rgba(5,8,15,0.94) 100%);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(245,158,11,0.15), 0 8px 32px rgba(0,0,0,0.6);
-  display: flex; align-items: center; padding: 0 20px; gap: 24px;
-  pointer-events: auto;
-}
-#header::before {
-  content: '';
-  position: absolute; left: 0; bottom: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--amber), transparent);
-  opacity: 0.4;
-}
-
-.header-brand {
-  display: flex; flex-direction: column; flex-shrink: 0;
-}
-.brand-title {
-  font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif;
-  font-size: 28px; letter-spacing: 4px;
-  color: var(--amber);
-  text-shadow: 0 0 20px rgba(245,158,11,0.5), 0 0 40px rgba(245,158,11,0.2);
-  line-height: 1;
-}
-.brand-sub {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 9px; letter-spacing: 3px;
-  color: var(--text-muted); text-transform: uppercase; margin-top: 2px;
-}
-
-.header-divider {
-  width: 1px; height: 40px; background: var(--border); flex-shrink: 0;
-}
-
-/* Weather controls strip */
-.weather-strip {
-  display: flex; gap: 18px; flex: 1; align-items: center;
-}
-.weather-ctrl {
-  display: flex; flex-direction: column; gap: 4px; min-width: 100px;
-}
-.ctrl-label {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 9px; color: var(--text-muted);
-  letter-spacing: 2px; text-transform: uppercase;
-  display: flex; justify-content: space-between;
-}
-.ctrl-val { color: var(--amber); font-weight: 700; }
-input[type="range"] {
-  width: 100%; height: 4px; cursor: pointer;
-  -webkit-appearance: none; appearance: none;
-  background: rgba(255,255,255,0.08); border-radius: 2px; outline: none;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--amber);
-  box-shadow: 0 0 6px var(--amber); cursor: pointer;
-}
-
-.payload-select {
-  background: rgba(0,0,0,0.6); border: 1px solid rgba(167,139,250,0.3);
-  color: #c4b5fd; font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;
-  outline: none; width: 100%;
-}
-.payload-select:hover { border-color: rgba(167,139,250,0.6); }
-
-/* FDI badge */
-.fdi-badge {
-  display: flex; flex-direction: column; align-items: flex-end;
-  flex-shrink: 0; padding-left: 16px; border-left: 1px solid var(--border);
-}
-.fdi-label {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 8px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;
-}
-.fdi-val {
-  font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif;
-  font-size: 26px; letter-spacing: 2px; line-height: 1;
-  color: var(--red); text-shadow: 0 0 12px rgba(239,68,68,0.6);
-  animation: fdi-blink 2s infinite;
-}
-@keyframes fdi-blink {
-  0%, 90%, 100% { opacity: 1; }
-  95% { opacity: 0.4; }
-}
-
-/* ── TOOLTIP BAR ── */
-#tooltip-bar {
-  position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
-  background: rgba(5,8,15,0.92); border: 1px solid rgba(245,158,11,0.2);
-  border-radius: 20px; padding: 5px 18px;
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 10px; color: var(--text-muted);
-  letter-spacing: 1px; white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-}
-#tooltip-bar span { color: var(--amber); }
-
-/* ── LEFT PANEL ── */
-#left-panel {
-  position: absolute; top: 82px; left: 16px;
-  width: 264px; border-radius: 12px;
-  overflow: hidden;
-}
-.panel-header {
-  background: rgba(0,0,0,0.4);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 14px;
-  display: flex; align-items: center; gap: 8px;
-}
-.panel-header-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--amber);
-  box-shadow: 0 0 6px var(--amber);
-  animation: dot-pulse 2s infinite;
-}
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-.panel-header-title {
-  font-family: 'Orbitron', 'Courier New', monospace;
-  font-size: 9px; font-weight: 700;
-  color: var(--amber); letter-spacing: 3px; text-transform: uppercase;
-}
-
-.panel-body { padding: 12px; }
-
-/* Tool buttons */
-.section-label {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 8px; color: var(--text-muted);
-  letter-spacing: 3px; text-transform: uppercase;
-  margin-bottom: 8px; padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
-}
-
-.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-
-.tool-btn {
-  border-radius: 6px; padding: 8px 6px;
-  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
-  cursor: pointer; border: 1px solid transparent;
-  transition: all 0.2s ease; background: rgba(255,255,255,0.02);
-  color: var(--text);
-}
-.tool-btn:hover { background: rgba(255,255,255,0.06); }
-
-.tool-ignite { border-color: rgba(249,115,22,0.3); color: #fb923c; }
-.tool-ignite:hover, .tool-ignite.active { background: rgba(249,115,22,0.15); border-color: #f97316; box-shadow: 0 0 12px rgba(249,115,22,0.2); }
-.tool-lightning { border-color: rgba(239,68,68,0.3); color: #f87171; }
-.tool-lightning:hover, .tool-lightning.active { background: rgba(239,68,68,0.15); border-color: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.2); }
-.tool-staging { border-color: rgba(100,116,139,0.3); color: #94a3b8; }
-.tool-staging:hover, .tool-staging.active { background: rgba(100,116,139,0.15); border-color: #64748b; }
-.tool-fireline { border-color: rgba(245,158,11,0.3); color: #fbbf24; }
-.tool-fireline:hover, .tool-fireline.active { background: rgba(245,158,11,0.15); border-color: var(--amber); box-shadow: 0 0 12px rgba(245,158,11,0.2); }
-
-.tool-btn.active {
-  box-shadow: 0 0 0 1px currentColor inset !important;
-}
-
-/* Unit buttons */
-.unit-btn {
-  width: 100%; text-align: left; cursor: pointer;
-  background: rgba(255,255,255,0.015); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 12px; margin-bottom: 5px;
-  transition: all 0.2s ease; position: relative; overflow: hidden;
-}
-.unit-btn::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px; border-radius: 0 2px 2px 0;
-  background: var(--unit-color, transparent);
-  transition: all 0.2s ease;
-}
-.unit-btn:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
-.unit-btn.active {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.15);
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
-}
-.unit-btn.active::before { width: 4px; }
-
-.unit-name {
-  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
-  font-size: 13px; font-weight: 700; line-height: 1.2;
-  color: var(--unit-color, var(--text-bright));
-}
-.unit-desc {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 9px; color: var(--text-muted);
-  margin-top: 2px; letter-spacing: 0.5px;
-}
-.unit-icon {
-  font-size: 16px; float: right; margin-left: 8px;
-  filter: drop-shadow(0 0 4px currentColor);
-}
-
-/* ── RIGHT PANEL ── */
-#right-panel {
-  position: absolute; top: 82px; right: 16px;
-  width: 340px; border-radius: 12px;
-  display: flex; flex-direction: column;
-  max-height: calc(100vh - 100px);
-}
-
-/* Stats */
-.stat-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 14px; border-bottom: 1px solid var(--border);
-}
-.stat-label {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 9px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;
-}
-.stat-val {
-  font-family: 'Orbitron', 'Courier New', monospace;
-  font-size: 14px; font-weight: 700; letter-spacing: 1px;
-}
-
-/* Roster */
-.roster-area {
-  flex: 1; overflow: hidden; display: flex; flex-direction: column;
-  padding: 12px; min-height: 120px;
-}
-.roster-scroll {
-  flex: 1; overflow-y: auto; max-height: 180px;
-}
-.roster-scroll::-webkit-scrollbar { width: 3px; }
-.roster-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-
-.roster-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-.roster-cs {
-  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
-  font-size: 12px; font-weight: 700; flex: 1; color: var(--text-bright);
-}
-.roster-loc {
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 9px; color: var(--text-muted);
-}
-.dismiss-btn {
-  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
-  color: #f87171; font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 8px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
-  letter-spacing: 1px; transition: all 0.2s ease;
-}
-.dismiss-btn:hover { background: rgba(239,68,68,0.25); border-color: #ef4444; }
-.roster-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
-}
-
-/* Log */
-.log-area { padding: 12px; border-top: 1px solid var(--border); }
-.log-scroll {
-  height: 110px; overflow-y: auto;
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 9px; line-height: 1.7;
-}
-.log-scroll::-webkit-scrollbar { width: 2px; }
-.log-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); }
-.log-entry { color: var(--text-muted); }
-.log-time { color: rgba(255,255,255,0.2); }
-.log-entry.highlight { color: var(--amber); }
-.log-entry.danger { color: #f87171; }
-.log-entry.success { color: var(--green); }
-
-/* Coordinate HUD */
-#coord-hud {
-  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-  background: rgba(5,8,15,0.9); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 16px;
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 10px; color: var(--text-muted);
-  pointer-events: none; letter-spacing: 2px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-}
-#coord-hud span { color: var(--cyan); }
-
-/* Minimap */
-#minimap-container {
-  position: absolute; bottom: 50px; right: 16px;
-  width: 160px; height: 160px; border-radius: 8px;
-  overflow: hidden; pointer-events: none;
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-}
-#minimap {
-  width: 100%; height: 100%;
-  background: #030609;
-}
-.minimap-label {
-  position: absolute; top: 4px; left: 6px;
-  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
-  font-size: 7px; color: rgba(255,255,255,0.3);
-  letter-spacing: 2px; text-transform: uppercase;
-}
-.minimap-viewport-rect {
-  position: absolute; border: 1px solid rgba(245,158,11,0.5);
-  pointer-events: none; transition: all 0.1s ease;
-}
-
-/* Zoom controls */
-#zoom-controls {
-  position: absolute; bottom: 50px; left: 16px;
-  display: flex; flex-direction: column; gap: 4px; pointer-events: auto;
-}
-.zoom-btn {
-  width: 36px; height: 36px; border-radius: 8px;
-  background: var(--panel); border: 1px solid var(--border);
-  color: var(--text); font-size: 18px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s ease; font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
-  font-weight: 700;
-}
-.zoom-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
-
-/* Custom scrollbar */
-.custom-scroll::-webkit-scrollbar { width: 3px; }
-.custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-</style>
-
 <script>
-// Try to load Google Fonts dynamically (works when online)
-(function() {
-  var link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Bebas+Neue&family=Orbitron:wght@400;700;900&display=swap';
-  document.head.appendChild(link);
+(function(){
+  var l=document.createElement('link');
+  l.rel='stylesheet';
+  l.href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Bebas+Neue&family=Orbitron:wght@700;900&display=swap';
+  document.head.appendChild(l);
 })();
 </script>
+<style>
+:root {
+  --bg:#05080f; --panel:rgba(6,10,20,0.97); --border:rgba(255,255,255,0.07);
+  --amber:#f59e0b; --cyan:#22d3ee; --red:#ef4444; --green:#10b981;
+  --purple:#a78bfa; --orange:#f97316; --text:#cbd5e1; --muted:#475569; --bright:#f1f5f9;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+  font-family:'Rajdhani','Trebuchet MS',sans-serif;color:var(--text)}
+
+/* Scanlines */
+body::after{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.013) 3px,rgba(255,255,255,0.013) 4px)}
+/* Vignette */
+body::before{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;
+  background:radial-gradient(ellipse 80% 80% at 50% 50%,transparent 50%,rgba(0,0,0,0.65) 100%)}
+
+/* MAP */
+#viewport{position:absolute;inset:0;z-index:1;overflow:hidden;cursor:crosshair}
+#viewport:active{cursor:grabbing}
+#map-surface{
+  position:absolute;
+  left:0;top:0;
+  transform-origin:0 0;
+  display:grid;
+  grid-template-columns:repeat(90,28px);
+  grid-template-rows:repeat(90,28px);
+  gap:1px;
+  background:#020508;
+  padding:16px;
+  user-select:none;
+  will-change:transform;
+}
+
+/* SECTORS */
+.sector{width:28px;height:28px;border-radius:3px;position:relative;cursor:pointer}
+.s-unburnt{background:#091209;border:1px solid #0d1a0d}
+.s-water{background:linear-gradient(135deg,#1e3a8a,#1e2a6a);border:1px solid #2563eb;box-shadow:inset 0 0 8px rgba(37,99,235,.3)}
+.s-contained{background:linear-gradient(135deg,#064e3b,#053d2e);border:1px solid #059669;box-shadow:inset 0 0 5px rgba(5,150,105,.2)}
+.s-burnt{background:#050709;border:1px solid #161e2e}
+.s-staging{background:linear-gradient(135deg,#1e293b,#111827);border:2px dashed #475569}
+.s-fireline{background:linear-gradient(135deg,#4a2f08,#2d1c04);border:1px solid #854d0e;box-shadow:inset 0 0 4px rgba(133,77,14,.4)}
+.s-burning{
+  background:radial-gradient(ellipse at 40% 40%,#ff7700 0%,#cc2200 55%,#7f1d1d 100%);
+  border:1px solid #ff5500;
+  animation:flk .2s infinite alternate;
+  box-shadow:0 0 12px #ff4500,0 0 5px #ff8800 inset;
+  z-index:3;
+}
+@keyframes flk{0%{transform:scale(.91);filter:brightness(.88)}100%{transform:scale(1.08);filter:brightness(1.45);box-shadow:0 0 22px #ff5500,0 0 8px #ffa500 inset}}
+
+.s-flightpath::after{content:'';position:absolute;inset:0;background:rgba(167,139,250,.22);border:2px dashed #a78bfa;border-radius:3px;z-index:10;pointer-events:none;animation:fp .4s infinite alternate}
+@keyframes fp{0%{opacity:.5}100%{opacity:1}}
+.s-retardant::before{content:'';position:absolute;inset:2px;border:2px solid #ec4899;background:rgba(236,72,153,.12);border-radius:2px;pointer-events:none;z-index:5}
+
+/* UNIT MARKER */
+.unit-marker{
+  position:absolute;width:20px;height:20px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.85);
+  transform:translate(-50%,-50%);
+  transition:left .5s cubic-bezier(.16,1,.3,1),top .5s cubic-bezier(.16,1,.3,1);
+  z-index:50;pointer-events:none;
+  box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 14px currentColor;
+}
+.cmd-ring{
+  position:absolute;border-radius:50%;
+  border:1px dashed rgba(250,204,21,.35);
+  background:radial-gradient(ellipse at center,rgba(250,204,21,.04),transparent 70%);
+  transform:translate(-50%,-50%);
+  pointer-events:none;z-index:30;
+  transition:left .5s ease,top .5s ease;
+}
+
+/* UI LAYER */
+.ui{position:absolute;inset:0;z-index:10;pointer-events:none}
+.ui-i{pointer-events:auto}
+
+/* PANEL */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  backdrop-filter:blur(16px);
+  box-shadow:0 0 0 1px rgba(0,0,0,.5),0 24px 48px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.04);
+  border-top:2px solid var(--amber);
+}
+
+/* HEADER */
+#hdr{
+  position:absolute;top:0;left:0;right:0;height:68px;
+  background:linear-gradient(180deg,rgba(4,7,13,.99),rgba(4,7,13,.93));
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 0 rgba(245,158,11,.18),0 6px 28px rgba(0,0,0,.55);
+  display:flex;align-items:center;padding:0 18px;gap:20px;
+  pointer-events:auto;
+}
+#hdr::after{content:'';position:absolute;left:0;bottom:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(245,158,11,.35),transparent)}
+.brand-title{font-family:'Bebas Neue','Impact',sans-serif;font-size:26px;letter-spacing:4px;
+  color:var(--amber);text-shadow:0 0 20px rgba(245,158,11,.5);line-height:1}
+.brand-sub{font-family:'Share Tech Mono','Courier New',monospace;font-size:8px;letter-spacing:3px;
+  color:var(--muted);text-transform:uppercase;margin-top:2px}
+.hdiv{width:1px;height:36px;background:var(--border);flex-shrink:0}
+.weather-strip{display:flex;gap:16px;flex:1;align-items:center}
+.wctrl{display:flex;flex-direction:column;gap:3px;min-width:96px}
+.wlabel{font-family:'Share Tech Mono','Courier New',monospace;font-size:8px;color:var(--muted);
+  letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.wval{color:var(--amber);font-weight:700}
+input[type=range]{width:100%;height:3px;cursor:pointer;-webkit-appearance:none;appearance:none;
+  background:rgba(255,255,255,.1);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;
+  border-radius:50%;background:var(--amber);box-shadow:0 0 5px var(--amber);cursor:pointer}
+.psel{background:rgba(0,0,0,.7);border:1px solid rgba(167,139,250,.35);color:#c4b5fd;
+  font-family:'Share Tech Mono','Courier New',monospace;font-size:9px;padding:3px 7px;
+  border-radius:4px;cursor:pointer;outline:none;width:100%}
+.fdi-box{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;
+  padding-left:14px;border-left:1px solid var(--border)}
+.fdi-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:2px}
+#fdiVal{font-family:'Bebas Neue','Impact',sans-serif;font-size:24px;letter-spacing:2px;line-height:1;
+  color:var(--red);text-shadow:0 0 10px rgba(239,68,68,.5);animation:fdi-blink 2.5s infinite}
+@keyframes fdi-blink{0%,88%,100%{opacity:1}94%{opacity:.3}}
+
+/* TOOLTIP */
+#tipbar{position:absolute;top:76px;left:50%;transform:translateX(-50%);
+  background:rgba(4,7,13,.92);border:1px solid rgba(245,158,11,.2);border-radius:20px;
+  padding:5px 18px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);
+  letter-spacing:1px;white-space:nowrap;pointer-events:none;
+  box-shadow:0 4px 20px rgba(0,0,0,.5)}
+#tipbar span{color:var(--amber)}
+
+/* LEFT PANEL */
+#lp{position:absolute;top:80px;left:14px;width:258px;border-radius:10px;
+  max-height:calc(100vh - 96px);overflow-y:auto}
+#lp::-webkit-scrollbar{width:3px}
+#lp::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+.phdr{background:rgba(0,0,0,.35);border-bottom:1px solid var(--border);
+  padding:9px 13px;display:flex;align-items:center;gap:7px}
+.pdot{width:6px;height:6px;border-radius:50%;background:var(--amber);
+  box-shadow:0 0 6px var(--amber);animation:pdot 2s infinite}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.3}}
+.ptitle{font-family:'Orbitron','Courier New',monospace;font-size:8px;font-weight:700;
+  color:var(--amber);letter-spacing:3px;text-transform:uppercase}
+
+.pbody{padding:11px}
+.slabel{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);
+  letter-spacing:2.5px;text-transform:uppercase;margin-bottom:7px;padding-bottom:5px;
+  border-bottom:1px solid var(--border)}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:11px}
+
+.tbtn{border-radius:6px;padding:8px 5px;font-family:'Rajdhani','Trebuchet MS',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:.3px;cursor:pointer;
+  border:1px solid transparent;transition:all .18s ease;background:rgba(255,255,255,.02);color:var(--text)}
+.t-ign{border-color:rgba(249,115,22,.3);color:#fb923c}
+.t-ign:hover,.t-ign.act{background:rgba(249,115,22,.14);border-color:#f97316;box-shadow:0 0 10px rgba(249,115,22,.18)}
+.t-ltg{border-color:rgba(239,68,68,.3);color:#f87171}
+.t-ltg:hover,.t-ltg.act{background:rgba(239,68,68,.14);border-color:#ef4444;box-shadow:0 0 10px rgba(239,68,68,.18)}
+.t-stg{border-color:rgba(100,116,139,.3);color:#94a3b8}
+.t-stg:hover,.t-stg.act{background:rgba(100,116,139,.14);border-color:#64748b}
+.t-frl{border-color:rgba(245,158,11,.3);color:#fbbf24}
+.t-frl:hover,.t-frl.act{background:rgba(245,158,11,.14);border-color:var(--amber);box-shadow:0 0 10px rgba(245,158,11,.18)}
+.tbtn.act{box-shadow:0 0 0 1px currentColor inset !important}
+
+.ubtn{width:100%;text-align:left;cursor:pointer;
+  background:rgba(255,255,255,.015);border:1px solid var(--border);
+  border-radius:7px;padding:9px 11px;margin-bottom:4px;
+  transition:all .18s ease;position:relative;overflow:hidden}
+.ubtn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--uc,transparent);border-radius:0 2px 2px 0;transition:width .18s}
+.ubtn:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
+.ubtn.act{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13)}
+.ubtn.act::before{width:4px}
+.uname{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;line-height:1.2}
+.udesc{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px}
+.uico{font-size:15px;float:right;margin-left:6px}
+
+/* RIGHT PANEL */
+#rp{position:absolute;top:80px;right:14px;width:330px;border-radius:10px;
+  display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
+
+.srow{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 13px;border-bottom:1px solid var(--border)}
+.slb{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.sval{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:1px}
+
+.rarea{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:11px;min-height:100px}
+.rscroll{flex:1;overflow-y:auto;max-height:170px}
+.rscroll::-webkit-scrollbar{width:2px}
+.rscroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07)}
+.rrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.rcs{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;flex:1;color:var(--bright)}
+.rloc{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted)}
+.disbtn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;
+  font-family:'Share Tech Mono',monospace;font-size:7px;padding:3px 7px;border-radius:3px;
+  cursor:pointer;letter-spacing:1px;transition:all .18s}
+.disbtn:hover{background:rgba(239,68,68,.22);border-color:#ef4444}
+
+.larea{padding:11px;border-top:1px solid var(--border)}
+.lscroll{height:100px;overflow-y:auto;font-family:'Share Tech Mono',monospace;font-size:8.5px;line-height:1.75}
+.lscroll::-webkit-scrollbar{width:2px}
+.lscroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.05)}
+.le{color:var(--muted)}.le.hi{color:var(--amber)}.le.ok{color:var(--green)}.le.dn{color:#f87171}
+.lt{color:rgba(255,255,255,.18)}
+
+/* MINIMAP */
+#mm-wrap{position:absolute;bottom:52px;right:14px;width:150px;height:150px;
+  border-radius:7px;overflow:hidden;pointer-events:none;
+  border:1px solid var(--border);box-shadow:0 8px 28px rgba(0,0,0,.55)}
+#mm{width:100%;height:100%}
+.mmlbl{position:absolute;top:3px;left:5px;font-family:'Share Tech Mono',monospace;
+  font-size:7px;color:rgba(255,255,255,.25);letter-spacing:2px;pointer-events:none}
+
+/* COORD */
+#coord{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  background:rgba(4,7,13,.9);border:1px solid var(--border);border-radius:16px;
+  padding:4px 14px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);
+  pointer-events:none;letter-spacing:2px;box-shadow:0 3px 16px rgba(0,0,0,.45)}
+#coord span{color:var(--cyan)}
+
+/* ZOOM */
+#zc{position:absolute;bottom:52px;left:14px;display:flex;flex-direction:column;gap:4px;pointer-events:auto}
+.zbtn{width:34px;height:34px;border-radius:7px;background:var(--panel);border:1px solid var(--border);
+  color:var(--text);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .18s;font-family:'Rajdhani',sans-serif;font-weight:700}
+.zbtn:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+</style>
 </head>
 <body>
 
-<!-- MAP -->
-<div class="map-viewport" id="viewport">
+<div id="viewport">
   <div id="map-surface"></div>
 </div>
 
-<!-- MINIMAP -->
-<div id="minimap-container">
-  <canvas id="minimap"></canvas>
-  <div class="minimap-label">OVERVIEW</div>
+<div id="mm-wrap">
+  <canvas id="mm"></canvas>
+  <div class="mmlbl">OVERVIEW</div>
 </div>
 
-<!-- UI LAYER -->
-<div class="ui-layer">
-
+<div class="ui">
   <!-- HEADER -->
-  <div id="header" class="ui-int">
-    <div class="header-brand">
+  <div id="hdr" class="ui-i">
+    <div>
       <div class="brand-title">INCIDENT COMMANDER</div>
-      <div class="brand-sub">Australia · Unified Air/Ground Command Platform v5.0</div>
+      <div class="brand-sub">Australia · Unified Air/Ground Command v5.0</div>
     </div>
-
-    <div class="header-divider"></div>
-
+    <div class="hdiv"></div>
     <div class="weather-strip">
-      <div class="weather-ctrl">
-        <div class="ctrl-label"><span>Wind Speed</span><span class="ctrl-val" id="windSpeedVal">35</span><span style="color:var(--text-muted)"> km/h</span></div>
-        <input id="windSpeed" type="range" min="0" max="100" value="35">
+      <div class="wctrl">
+        <div class="wlabel"><span>Wind Speed</span><span class="wval" id="wsV">35</span><span style="color:var(--muted)"> km/h</span></div>
+        <input id="ws" type="range" min="0" max="100" value="35">
       </div>
-      <div class="weather-ctrl">
-        <div class="ctrl-label"><span>Wind Dir</span><span class="ctrl-val" id="windDirVal" style="color:var(--cyan)">45</span><span style="color:var(--text-muted)">°</span></div>
-        <input id="windDir" type="range" min="0" max="360" value="45">
+      <div class="wctrl">
+        <div class="wlabel"><span>Wind Dir</span><span class="wval" id="wdV" style="color:var(--cyan)">45</span><span style="color:var(--muted)">°</span></div>
+        <input id="wd" type="range" min="0" max="360" value="45">
       </div>
-      <div class="weather-ctrl">
-        <div class="ctrl-label"><span>Temp</span><span class="ctrl-val" id="tempVal" style="color:#fb923c">38</span><span style="color:var(--text-muted)">°C</span></div>
-        <input id="temperature" type="range" min="15" max="45" value="38">
+      <div class="wctrl">
+        <div class="wlabel"><span>Temp</span><span class="wval" id="tV" style="color:#fb923c">38</span><span style="color:var(--muted)">°C</span></div>
+        <input id="tp" type="range" min="15" max="45" value="38">
       </div>
-      <div class="weather-ctrl" style="min-width:140px">
-        <div class="ctrl-label" style="margin-bottom:4px"><span>Tanker Payload</span></div>
-        <select id="airPayload" class="payload-select">
+      <div class="wctrl" style="min-width:136px">
+        <div class="wlabel" style="margin-bottom:4px"><span>Tanker Payload</span></div>
+        <select id="payload" class="psel">
           <option value="water">◉ Suppression Water</option>
           <option value="retardant">◈ Phos-Chek Retardant</option>
         </select>
       </div>
     </div>
-
-    <div class="fdi-badge">
+    <div class="fdi-box">
       <div class="fdi-label">Fire Danger Index</div>
-      <div class="fdi-val" id="fdiDisplay">CATASTROPHIC</div>
+      <div id="fdiVal">CATASTROPHIC</div>
     </div>
   </div>
 
-  <!-- TOOLTIP BAR -->
-  <div id="tooltip-bar">
-    <span id="active-tool-label">POINT IGNITION</span> · Click map to place · Scroll to zoom · Drag to pan
-  </div>
+  <!-- TOOLTIP -->
+  <div id="tipbar"><span id="tipTool">POINT IGNITION</span> · Click map to place · Scroll to zoom · Drag to pan</div>
 
-  <!-- LEFT PANEL -->
-  <div id="left-panel" class="panel panel-border-top ui-int custom-scroll" style="max-height:calc(100vh - 98px); overflow-y:auto;">
-    <div class="panel-header">
-      <div class="panel-header-dot"></div>
-      <div class="panel-header-title">Tactical Controls</div>
-    </div>
-    <div class="panel-body">
-      <div class="section-label">Engineering Tools</div>
-      <div class="tool-grid">
-        <button id="pointIgnition" class="tool-btn tool-ignite active" onclick="setToolUI('ignite', null, this, 'POINT IGNITION · Click to start fire')">🔥 Ignite</button>
-        <button id="lightningStrike" class="tool-btn tool-lightning" onclick="setToolUI('lightning', null, this, 'LIGHTNING ARRAY · Click for multi-strike')">⚡ Lightning</button>
-        <button id="stagingBuild" class="tool-btn tool-staging" onclick="setToolUI('staging', null, this, 'STAGING AREA · Click to establish base')">⛺ Staging</button>
-        <button id="firelineBuild" class="tool-btn tool-fireline" onclick="setToolUI('fireline', null, this, 'FIRELINE · Click to build earth break')">⛏ Fireline</button>
+  <!-- LEFT -->
+  <div id="lp" class="panel ui-i">
+    <div class="phdr"><div class="pdot"></div><div class="ptitle">Tactical Controls</div></div>
+    <div class="pbody">
+      <div class="slabel">Engineering Tools</div>
+      <div class="tgrid">
+        <button class="tbtn t-ign act" id="b-ign" onclick="setTool('ignite',null,this,'POINT IGNITION · Click to ignite')">🔥 Ignite</button>
+        <button class="tbtn t-ltg" id="b-ltg" onclick="setTool('lightning',null,this,'LIGHTNING ARRAY · Click for multi-strike')">⚡ Lightning</button>
+        <button class="tbtn t-stg" id="b-stg" onclick="setTool('staging',null,this,'STAGING AREA · Click to establish base')">⛺ Staging</button>
+        <button class="tbtn t-frl" id="b-frl" onclick="setTool('fireline',null,this,'FIRELINE · Click to build earth break')">⛏ Fireline</button>
       </div>
-
-      <div class="section-label">Resource Dispatch</div>
-
-      <div class="unit-btn" id="btn-commander" style="--unit-color:#facc15" onclick="setUnitTool('commander', this, 'SECTOR COMMANDER · Click to deploy HQ unit')">
-        <span class="unit-icon" style="color:#facc15">⭐</span>
-        <div class="unit-name">Sector Commander</div>
-        <div class="unit-desc">Boosts ground fleet in 8-cell radius</div>
+      <div class="slabel">Resource Dispatch</div>
+      <div class="ubtn" style="--uc:#facc15" onclick="setTool('unit','commander',this,'SECTOR COMMANDER · Click to deploy HQ')">
+        <span class="uico" style="color:#facc15">⭐</span>
+        <div class="uname" style="color:#facc15">Sector Commander</div>
+        <div class="udesc">Boosts ground fleet in 8-cell radius</div>
       </div>
-      <div class="unit-btn" id="btn-striker" style="--unit-color:#38bdf8" onclick="setUnitTool('striker', this, 'LIGHT STRIKER · Click to deploy rapid attack')">
-        <span class="unit-icon" style="color:#38bdf8">🚒</span>
-        <div class="unit-name">Light Attack Striker</div>
-        <div class="unit-desc">Rapid manoeuvre direct attack unit</div>
+      <div class="ubtn" style="--uc:#38bdf8" onclick="setTool('unit','striker',this,'LIGHT STRIKER · Click to deploy')">
+        <span class="uico" style="color:#38bdf8">🚒</span>
+        <div class="uname" style="color:#38bdf8">Light Attack Striker</div>
+        <div class="udesc">Rapid manoeuvre direct attack unit</div>
       </div>
-      <div class="unit-btn" id="btn-tanker" style="--unit-color:#ef4444" onclick="setUnitTool('tanker', this, 'CAT-1 TANKER · Click to deploy heavy tanker')">
-        <span class="unit-icon" style="color:#ef4444">🚛</span>
-        <div class="unit-name">Heavy Tanker Cat-1</div>
-        <div class="unit-desc">High-capacity containment line</div>
+      <div class="ubtn" style="--uc:#ef4444" onclick="setTool('unit','tanker',this,'CAT-1 TANKER · Click to deploy')">
+        <span class="uico" style="color:#ef4444">🚛</span>
+        <div class="uname" style="color:#ef4444">Heavy Tanker Cat-1</div>
+        <div class="udesc">High-capacity containment line</div>
       </div>
-      <div class="unit-btn" id="btn-dozer" style="--unit-color:#ea580c" onclick="setUnitTool('dozer', this, 'BULLDOZER · Click to deploy earthbreaker')">
-        <span class="unit-icon" style="color:#ea580c">🚜</span>
-        <div class="unit-name">Heavy Plant Bulldozer</div>
-        <div class="unit-desc">Auto-carves continuous earth firebreaks</div>
+      <div class="ubtn" style="--uc:#ea580c" onclick="setTool('unit','dozer',this,'BULLDOZER · Click to deploy earthbreaker')">
+        <span class="uico" style="color:#ea580c">🚜</span>
+        <div class="uname" style="color:#ea580c">Heavy Plant Bulldozer</div>
+        <div class="udesc">Auto-carves continuous earth firebreaks</div>
       </div>
-      <div class="unit-btn" id="btn-helicopter" style="--unit-color:#34d399" onclick="setUnitTool('helicopter', this, 'ROTARY WING · Click to deploy helo attack')">
-        <span class="unit-icon" style="color:#34d399">🚁</span>
-        <div class="unit-name">Rotary Wing Air Attack</div>
-        <div class="unit-desc">Pinpoint hover-drop water bucket</div>
+      <div class="ubtn" style="--uc:#34d399" onclick="setTool('unit','helicopter',this,'ROTARY WING · Click to deploy helo')">
+        <span class="uico" style="color:#34d399">🚁</span>
+        <div class="uname" style="color:#34d399">Rotary Wing Air Attack</div>
+        <div class="udesc">Pinpoint hover-drop water bucket</div>
       </div>
-      <div class="unit-btn" id="btn-bomber" style="--unit-color:#a78bfa" onclick="setUnitTool('bomber', this, 'FIXED-WING TANKER · Click-drag to set flight path')">
-        <span class="unit-icon" style="color:#a78bfa">✈️</span>
-        <div class="unit-name">Fixed-Wing Air Tanker</div>
-        <div class="unit-desc">Drag to draw flight vector path</div>
+      <div class="ubtn" style="--uc:#a78bfa" onclick="setTool('unit','bomber',this,'FIXED-WING TANKER · Click-drag flight path')">
+        <span class="uico" style="color:#a78bfa">✈️</span>
+        <div class="uname" style="color:#a78bfa">Fixed-Wing Air Tanker</div>
+        <div class="udesc">Drag to draw flight vector path</div>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT PANEL -->
-  <div id="right-panel" class="panel panel-border-top ui-int">
-    <div class="panel-header">
-      <div class="panel-header-dot"></div>
-      <div class="panel-header-title">Incident Monitor</div>
+  <!-- RIGHT -->
+  <div id="rp" class="panel ui-i">
+    <div class="phdr"><div class="pdot"></div><div class="ptitle">Incident Monitor</div></div>
+    <div class="srow">
+      <div class="slb">🔥 Burning Sectors</div>
+      <div class="sval" id="sBurn" style="color:#f97316">0</div>
     </div>
-
-    <!-- Stats -->
-    <div class="stat-row">
-      <div class="stat-label">🔥 Active Burning Sectors</div>
-      <div class="stat-val" id="burnArea" style="color:#f97316">0</div>
+    <div class="srow">
+      <div class="slb">✅ Contained</div>
+      <div class="sval" id="sCont" style="color:var(--green)">0</div>
     </div>
-    <div class="stat-row">
-      <div class="stat-label">✅ Contained Sectors</div>
-      <div class="stat-val" id="containedPct" style="color:var(--green)">0</div>
+    <div class="srow" style="border-bottom:none">
+      <div class="slb">📋 Deployed Assets</div>
+      <div class="sval" id="sAss" style="color:var(--cyan)">0</div>
     </div>
-    <div class="stat-row" style="border-bottom:none">
-      <div class="stat-label">📋 Deployed Assets</div>
-      <div class="stat-val" id="assetCount" style="color:var(--cyan)">0</div>
-    </div>
-
-    <!-- Roster -->
-    <div class="roster-area" style="border-top:1px solid var(--border)">
-      <div class="section-label" style="margin-bottom:8px">Active Fleet Roster</div>
-      <div class="roster-scroll" id="rosterScroll">
-        <div style="font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-muted); text-align:center; padding:20px 0; opacity:0.5;">
-          — NO ACTIVE DEPLOYMENTS —
-        </div>
+    <div class="rarea" style="border-top:1px solid var(--border)">
+      <div class="slabel" style="margin-bottom:7px">Active Fleet Roster</div>
+      <div class="rscroll" id="roster">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);text-align:center;padding:18px 0;opacity:.45">— NO ACTIVE DEPLOYMENTS —</div>
       </div>
     </div>
-
-    <!-- Log -->
-    <div class="log-area">
-      <div class="section-label" style="margin-bottom:6px">SICC Communications Log</div>
-      <div class="log-scroll" id="logisticsLog">
-        <div class="log-entry"><span class="log-time">[SYSTEM] </span>High-resolution 90×90 tactical grid online. Standing by.</div>
+    <div class="larea">
+      <div class="slabel" style="margin-bottom:5px">SICC Communications Log</div>
+      <div class="lscroll" id="log">
+        <div class="le"><span class="lt">[SYSTEM] </span>90×90 tactical grid online. Standing by.</div>
       </div>
     </div>
   </div>
 
   <!-- COORD HUD -->
-  <div id="coord-hud">GRID <span id="coordX">--</span>, <span id="coordY">--</span></div>
+  <div id="coord">GRID <span id="cx">--</span>, <span id="cy">--</span></div>
 
   <!-- ZOOM -->
-  <div id="zoom-controls">
-    <button class="zoom-btn" onclick="adjustZoom(1.2)">+</button>
-    <button class="zoom-btn" onclick="adjustZoom(0.83)">−</button>
+  <div id="zc">
+    <button class="zbtn" onclick="doZoom(1.2)">+</button>
+    <button class="zbtn" onclick="doZoom(0.83)">−</button>
   </div>
-
 </div>
 
 <script>
-const GRID = 90;
-const SZ = 29; // cell + gap
+const GRID = 90, SZ = 29;
+const vp = document.getElementById('viewport');
+const ms = document.getElementById('map-surface');
+const mmCv = document.getElementById('mm');
+mmCv.width = 150; mmCv.height = 150;
+const mmX = mmCv.getContext('2d');
 
-const viewport = document.getElementById('viewport');
-const mapSurface = document.getElementById('map-surface');
+const sectors = [], units = [];
+let nid = 1, tool = 'ignite', utype = null;
+let camX = 0, camY = 0, zoom = 0.44;
+let drag = false, dsx = 0, dsy = 0;
+let fltDraw = false, fltStart = null, fltPath = [], fltHover = null;
 
-// Minimap — init BEFORE applyTransform so it's available immediately
-const minimap = document.getElementById('minimap');
-minimap.width = 160; minimap.height = 160;
-const mmCtx = minimap.getContext('2d');
-function updateMinimap() {
-  mmCtx.clearRect(0,0,160,160);
-  mmCtx.fillStyle = '#030609'; mmCtx.fillRect(0,0,160,160);
-  const scale = 160 / GRID;
-  for (const sec of sectors) {
-    let clr;
-    if (sec.state==='burning') clr='#ff4500';
-    else if (sec.state==='contained') clr='#065f46';
-    else if (sec.state==='water') clr='#1d4ed8';
-    else if (sec.state==='fireline') clr='#92400e';
-    else if (sec.state==='staging') clr='#334155';
-    else if (sec.state==='burnt') clr='#111';
-    else clr='#0a140a';
-    mmCtx.fillStyle = clr;
-    mmCtx.fillRect(sec.x*scale, sec.y*scale, scale+0.5, scale+0.5);
-  }
-  for (const u of units) {
-    mmCtx.fillStyle = UNIT_DEFS[u.type]?.color || '#fff';
-    mmCtx.beginPath();
-    mmCtx.arc(u.x*scale+scale/2, u.y*scale+scale/2, 2.5, 0, Math.PI*2);
-    mmCtx.fill();
-  }
-}
-
-// Camera state
-let camX = 0, camY = 0, zoom = 0.42;
-let isDragging = false, startX = 0, startY = 0;
-
-function applyTransform() {
-  mapSurface.style.transform = `translate(${camX}px,${camY}px) scale(${zoom})`;
-  updateMinimap();
-}
-
-// Initial centering
-camX = window.innerWidth / 2 - (GRID * SZ * zoom) / 2;
-camY = window.innerHeight / 2 - (GRID * SZ * zoom) / 2;
-applyTransform();
-
-function adjustZoom(factor) {
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
-  const newZoom = Math.max(0.1, Math.min(5, zoom * factor));
-  camX = cx - (cx - camX) * (newZoom / zoom);
-  camY = cy - (cy - camY) * (newZoom / zoom);
-  zoom = newZoom;
-  applyTransform();
-}
-
-viewport.addEventListener('mousedown', e => {
-  if (e.target === viewport || e.target === mapSurface) {
-    isDragging = true; startX = e.clientX - camX; startY = e.clientY - camY;
-  }
-});
-window.addEventListener('mousemove', e => {
-  if (isDragging) { camX = e.clientX - startX; camY = e.clientY - startY; applyTransform(); }
-  if (isDrawingFlight) handleFlightDrag(e);
-});
-window.addEventListener('mouseup', () => { isDragging = false; if (isDrawingFlight) executeFlightDrop(); });
-viewport.addEventListener('wheel', e => {
-  e.preventDefault();
-  adjustZoom(e.deltaY > 0 ? 0.88 : 1.12);
-}, { passive: false });
-
-// State
-const sectors = [];
-const units = [];
-let nextId = 1;
-let selectedTool = 'ignite';
-let selectedUnitType = null;
-
-const UNIT_DEFS = {
-  commander:  { color: '#facc15', label: 'Sector Commander', icon: '⭐' },
-  striker:    { color: '#38bdf8', label: 'Light Striker',    icon: '🚒' },
-  tanker:     { color: '#ef4444', label: 'Cat-1 Tanker',     icon: '🚛' },
-  dozer:      { color: '#ea580c', label: 'Heavy Dozer',      icon: '🚜' },
-  helicopter: { color: '#34d399', label: 'Air Attack Helo',  icon: '🚁' },
-  bomber:     { color: '#a78bfa', label: 'Air Tanker',       icon: '✈' },
+// UNITS
+const UDEFS = {
+  commander:  {color:'#facc15', label:'Commander'},
+  striker:    {color:'#38bdf8', label:'Striker'},
+  tanker:     {color:'#ef4444', label:'Tanker'},
+  dozer:      {color:'#ea580c', label:'Dozer'},
+  helicopter: {color:'#34d399', label:'Helo'},
+  bomber:     {color:'#a78bfa', label:'Bomber'},
 };
 
-// Flight path state
-let isDrawingFlight = false, flightStart = null, flightPath = [], currentHover = null;
-
-// Build grid
+// BUILD GRID
 for (let y = 0; y < GRID; y++) {
   for (let x = 0; x < GRID; x++) {
     const el = document.createElement('div');
-    el.className = 'sector state-unburnt';
-    el.dataset.x = x; el.dataset.y = y;
-
     let state = 'unburnt';
-    if ((x > 22 && x < 35 && y > 15 && y < 28) || (x > 60 && x < 75 && y > 52 && y < 67)) {
-      state = 'water'; el.className = 'sector state-water';
-    }
-    // Add some natural terrain variation
-    if (state === 'unburnt' && Math.random() < 0.006) {
-      state = 'burnt'; el.className = 'sector state-burnt';
-    }
+    if ((x>22&&x<35&&y>15&&y<28)||(x>60&&x<75&&y>52&&y<67)) state='water';
+    else if (Math.random()<.005) state='burnt';
+    el.className = 'sector s-'+state;
+    el.dataset.x = x; el.dataset.y = y;
+    ms.appendChild(el);
+    sectors.push({x,y,state,el,ret:false});
 
-    mapSurface.appendChild(el);
-    sectors.push({ x, y, state, el, hasRetardant: false });
-
-    el.addEventListener('mousedown', e => {
-      if (e.button === 0 && selectedTool === 'unit' && selectedUnitType === 'bomber') {
-        e.stopPropagation();
-        isDrawingFlight = true; flightStart = { x, y };
+    el.addEventListener('mousedown', e=>{
+      if (e.button===0 && tool==='unit' && utype==='bomber') {
+        e.stopPropagation(); fltDraw=true; fltStart={x,y};
       }
     });
-    el.addEventListener('mouseenter', () => {
-      currentHover = { x, y };
-      document.getElementById('coordX').textContent = x;
-      document.getElementById('coordY').textContent = y;
-      if (isDrawingFlight) calcFlightPath();
+    el.addEventListener('mouseenter', ()=>{
+      document.getElementById('cx').textContent=x;
+      document.getElementById('cy').textContent=y;
+      fltHover={x,y};
+      if (fltDraw) calcFlt();
     });
-    el.addEventListener('click', e => {
-      if (!(selectedTool === 'unit' && selectedUnitType === 'bomber'))
-        onSectorClick(x, y);
+    el.addEventListener('click', e=>{
+      if (!(tool==='unit'&&utype==='bomber')) sectorClick(x,y);
     });
   }
 }
 
-function getSector(x, y) {
-  if (x < 0 || x >= GRID || y < 0 || y >= GRID) return null;
-  return sectors[y * GRID + x];
+function getSec(x,y){
+  if(x<0||x>=GRID||y<0||y>=GRID)return null;
+  return sectors[y*GRID+x];
 }
 
-// Logging
-function pushLog(text, cls = '') {
-  const log = document.getElementById('logisticsLog');
-  const t = new Date().toTimeString().split(' ')[0];
-  const div = document.createElement('div');
-  div.className = `log-entry ${cls}`;
-  div.innerHTML = `<span class="log-time">[${t}]</span> ${text}`;
-  log.prepend(div);
+// CAMERA
+function applyT(){
+  ms.style.transform=`translate(${camX}px,${camY}px) scale(${zoom})`;
+  drawMM();
+}
+function center(){
+  camX=(window.innerWidth-(GRID*SZ*zoom))/2;
+  camY=(window.innerHeight-68-(GRID*SZ*zoom))/2+68;
+  applyT();
+}
+center();
+
+function doZoom(f){
+  const cx=window.innerWidth/2, cy=window.innerHeight/2;
+  const nz=Math.max(.08,Math.min(5,zoom*f));
+  camX=cx-(cx-camX)*(nz/zoom);
+  camY=cy-(cy-camY)*(nz/zoom);
+  zoom=nz; applyT();
 }
 
-// Tool selection
-let activeToolBtn = document.getElementById('pointIgnition');
-function setToolUI(tool, unitType, btn, label) {
-  selectedTool = tool; selectedUnitType = unitType;
-  document.querySelectorAll('.tool-btn, .unit-btn').forEach(b => b.classList.remove('active'));
-  if (btn) { btn.classList.add('active'); activeToolBtn = btn; }
-  document.getElementById('active-tool-label').textContent = label || tool.toUpperCase();
-}
-function setUnitTool(type, btn, label) {
-  setToolUI('unit', type, btn, label);
+vp.addEventListener('mousedown',e=>{
+  if(e.target===vp||e.target===ms){drag=true;dsx=e.clientX-camX;dsy=e.clientY-camY;}
+});
+window.addEventListener('mousemove',e=>{
+  if(drag){camX=e.clientX-dsx;camY=e.clientY-dsy;applyT();}
+  if(fltDraw&&fltHover) calcFlt();
+});
+window.addEventListener('mouseup',()=>{drag=false;if(fltDraw)doFltDrop();});
+vp.addEventListener('wheel',e=>{e.preventDefault();doZoom(e.deltaY>0?.88:1.12);},{passive:false});
+
+// TOOL SELECTION
+let activeBtn=document.getElementById('b-ign');
+function setTool(t,ut,btn,tip){
+  tool=t; utype=ut;
+  document.querySelectorAll('.tbtn,.ubtn').forEach(b=>b.classList.remove('act'));
+  if(btn){btn.classList.add('act');activeBtn=btn;}
+  document.getElementById('tipTool').textContent=tip||t.toUpperCase();
 }
 
-// Sector interaction
-function onSectorClick(x, y) {
-  const sec = getSector(x, y);
-  if (!sec) return;
-  if (selectedTool === 'ignite') {
-    if (sec.state === 'unburnt') {
-      sec.state = 'burning'; sec.el.className = 'sector state-burning';
-      pushLog(`Ignition confirmed at [${x},${y}] — fire is spreading.`, 'danger');
+// LOGGING
+function log(txt,cls=''){
+  const d=document.getElementById('log');
+  const t=new Date().toTimeString().split(' ')[0];
+  const div=document.createElement('div');
+  div.className='le '+(cls||'');
+  div.innerHTML=`<span class="lt">[${t}]</span> ${txt}`;
+  d.prepend(div);
+}
+
+// SECTOR CLICK
+function sectorClick(x,y){
+  const s=getSec(x,y); if(!s) return;
+  if(tool==='ignite'){
+    if(s.state==='unburnt'){s.state='burning';s.el.className='sector s-burning';log(`Ignition at [${x},${y}] — fire spreading.`,'dn');}
+  } else if(tool==='lightning'){
+    log(`⚡ Lightning struck [${x},${y}].`,'dn');
+    for(let i=-2;i<=2;i++) for(let j=-2;j<=2;j++){
+      const t=getSec(x+i,y+j);
+      if(t&&t.state==='unburnt'&&Math.random()>.45){t.state='burning';t.el.className='sector s-burning';}
     }
-  } else if (selectedTool === 'lightning') {
-    pushLog(`⚡ Lightning array struck [${x},${y}] — multiple ignitions.`, 'danger');
-    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
-      const t = getSector(x+i, y+j);
-      if (t && t.state === 'unburnt' && Math.random() > 0.45) { t.state = 'burning'; t.el.className = 'sector state-burning'; }
+  } else if(tool==='staging'){
+    s.state='staging';s.el.className='sector s-staging';
+    log(`Staging base at [${x},${y}].`);
+  } else if(tool==='fireline'){
+    if(s.state==='unburnt'){s.state='fireline';s.el.className='sector s-fireline';}
+  } else if(tool==='unit'){
+    if(utype&&utype!=='bomber') deploy(x,y,utype);
+    else if(!utype){
+      const mv=units.filter(u=>u.type!=='bomber'&&u.type!=='commander');
+      if(mv.length){
+        const cl=mv.reduce((a,b)=>Math.hypot(b.x-x,b.y-y)<Math.hypot(a.x-x,a.y-y)?b:a);
+        cl.tx=x;cl.ty=y;log(`Redirected ${cl.cs} to [${x},${y}].`);
+      }
     }
-  } else if (selectedTool === 'staging') {
-    sec.state = 'staging'; sec.el.className = 'sector state-staging';
-    pushLog(`Staging base established at [${x},${y}].`);
-  } else if (selectedTool === 'fireline') {
-    if (sec.state === 'unburnt') { sec.state = 'fireline'; sec.el.className = 'sector state-fireline'; }
-  } else if (selectedTool === 'unit') {
-    if (selectedUnitType && selectedUnitType !== 'bomber') deployUnit(x, y, selectedUnitType);
-    else if (!selectedUnitType) rerouteNearest(x, y);
   }
 }
 
-// Deploy unit
-function deployUnit(x, y, type) {
-  const def = UNIT_DEFS[type];
-  const marker = document.createElement('div');
-  marker.className = 'unit-marker';
-  marker.style.backgroundColor = def.color + '44';
-  marker.style.borderColor = def.color;
-  marker.style.color = def.color;
-  marker.style.left = `${x * SZ + 14}px`;
-  marker.style.top  = `${y * SZ + 14}px`;
-  mapSurface.appendChild(marker);
-
-  const id = nextId++;
-  const obj = { id, x, y, targetX: x, targetY: y, type, marker, callsign: `${def.label.split(' ')[0].toUpperCase()}-${String(id).padStart(2,'0')}` };
-
-  if (type === 'commander') {
-    const ring = document.createElement('div');
-    ring.className = 'command-radius-ring';
-    const r = 8 * SZ * 2;
-    ring.style.cssText = `width:${r}px;height:${r}px;left:${x*SZ+14}px;top:${y*SZ+14}px;`;
-    mapSurface.appendChild(ring);
-    obj.ring = ring;
+// DEPLOY
+function deploy(x,y,type){
+  const def=UDEFS[type];
+  const mk=document.createElement('div');
+  mk.className='unit-marker';
+  mk.style.cssText=`background:${def.color}44;border-color:${def.color};color:${def.color};left:${x*SZ+14+16}px;top:${y*SZ+14+16}px;`;
+  ms.appendChild(mk);
+  const id=nid++;
+  const obj={id,x,y,tx:x,ty:y,type,mk,cs:`${def.label.toUpperCase().split(' ')[0]}-${String(id).padStart(2,'0')}`};
+  if(type==='commander'){
+    const ring=document.createElement('div');
+    const r=8*SZ*2;
+    ring.className='cmd-ring';
+    ring.style.cssText=`width:${r}px;height:${r}px;left:${x*SZ+14+16}px;top:${y*SZ+14+16}px;`;
+    ms.appendChild(ring);
+    obj.ring=ring;
   }
-
   units.push(obj);
-  pushLog(`Deployed ${def.icon} <strong style="color:${def.color}">${obj.callsign}</strong> at sector [${x},${y}].`, 'highlight');
+  log(`Deployed <strong style="color:${def.color}">${obj.cs}</strong> at [${x},${y}].`,'hi');
   rebuildRoster();
 }
 
-function rerouteNearest(x, y) {
-  const candidates = units.filter(u => u.type !== 'bomber' && u.type !== 'commander');
-  if (!candidates.length) return;
-  const closest = candidates.reduce((a, b) => Math.hypot(b.x-x,b.y-y) < Math.hypot(a.x-x,a.y-y) ? b : a);
-  closest.targetX = x; closest.targetY = y;
-  pushLog(`Redirected ${closest.callsign} to [${x},${y}].`);
+function dismissUnit(id){
+  const i=units.findIndex(u=>u.id===id); if(i<0)return;
+  const u=units[i];
+  u.mk.parentNode?.removeChild(u.mk);
+  u.ring?.parentNode?.removeChild(u.ring);
+  log(`Demobilized ${u.cs}.`);
+  units.splice(i,1); rebuildRoster();
 }
 
-function dismissUnit(id) {
-  const i = units.findIndex(u => u.id === id);
-  if (i < 0) return;
-  const u = units[i];
-  if (u.marker.parentNode) u.marker.parentNode.removeChild(u.marker);
-  if (u.ring?.parentNode) u.ring.parentNode.removeChild(u.ring);
-  pushLog(`Demobilized ${u.callsign}.`);
-  units.splice(i, 1);
-  rebuildRoster();
-}
-
-function rebuildRoster() {
-  const scroll = document.getElementById('rosterScroll');
-  document.getElementById('assetCount').textContent = units.length;
-  if (!units.length) {
-    scroll.innerHTML = `<div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-muted);text-align:center;padding:20px 0;opacity:0.5;">— NO ACTIVE DEPLOYMENTS —</div>`;
-    return;
-  }
-  scroll.innerHTML = '';
-  units.forEach(u => {
-    const def = UNIT_DEFS[u.type];
-    const row = document.createElement('div');
-    row.className = 'roster-row';
-    row.innerHTML = `
-      <div class="roster-dot" style="background:${def.color};color:${def.color};box-shadow:0 0 6px ${def.color}"></div>
-      <div class="roster-cs">${def.icon} ${u.callsign}</div>
-      <div class="roster-loc">[${u.x},${u.y}]</div>
-      <button class="dismiss-btn" onclick="dismissUnit(${u.id})">DISMISS</button>
-    `;
-    scroll.appendChild(row);
+function rebuildRoster(){
+  document.getElementById('sAss').textContent=units.length;
+  const r=document.getElementById('roster');
+  if(!units.length){r.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:8px;color:var(--muted);text-align:center;padding:18px 0;opacity:.45">— NO ACTIVE DEPLOYMENTS —</div>';return;}
+  r.innerHTML='';
+  units.forEach(u=>{
+    const def=UDEFS[u.type];
+    const row=document.createElement('div');
+    row.className='rrow';
+    row.innerHTML=`<div class="rdot" style="background:${def.color};box-shadow:0 0 5px ${def.color}"></div>
+      <div class="rcs">${u.cs}</div>
+      <div class="rloc">[${u.x},${u.y}]</div>
+      <button class="disbtn" onclick="dismissUnit(${u.id})">DISMISS</button>`;
+    r.appendChild(row);
   });
 }
 
-// Flight path (Bresenham)
-function calcFlightPath() {
-  if (!flightStart || !currentHover) return;
-  sectors.forEach(s => s.el.classList.remove('state-flightpath-target'));
-  flightPath = [];
-  let x0=flightStart.x, y0=flightStart.y, x1=currentHover.x, y1=currentHover.y;
-  let dx=Math.abs(x1-x0), sx=x0<x1?1:-1, dy=Math.abs(y1-y0), sy=y0<y1?1:-1;
-  let err=(dx>dy?dx:-dy)/2;
-  while(true) {
-    const s=getSector(x0,y0); if(s){s.el.classList.add('state-flightpath-target');flightPath.push(s);}
+// FLIGHT PATH (Bresenham)
+function calcFlt(){
+  sectors.forEach(s=>s.el.classList.remove('s-flightpath'));
+  fltPath=[];
+  if(!fltStart||!fltHover) return;
+  let x0=fltStart.x,y0=fltStart.y,x1=fltHover.x,y1=fltHover.y;
+  let dx=Math.abs(x1-x0),sx=x0<x1?1:-1,dy=Math.abs(y1-y0),sy=y0<y1?1:-1,err=(dx>dy?dx:-dy)/2;
+  while(true){
+    const s=getSec(x0,y0);
+    if(s){s.el.classList.add('s-flightpath');fltPath.push(s);}
     if(x0===x1&&y0===y1)break;
-    let e2=err; if(e2>-dx){err-=dy;x0+=sx;} if(e2<dy){err+=dx;y0+=sy;}
+    let e2=err;if(e2>-dx){err-=dy;x0+=sx;}if(e2<dy){err+=dx;y0+=sy;}
   }
 }
-function handleFlightDrag(e) {}
-function executeFlightDrop() {
-  isDrawingFlight = false;
-  sectors.forEach(s => s.el.classList.remove('state-flightpath-target'));
-  if (!flightPath.length) return;
-  const payload = document.getElementById('airPayload').value;
-  const start = flightPath[0], end = flightPath[flightPath.length-1];
-  const def = UNIT_DEFS.bomber;
 
-  const marker = document.createElement('div');
-  marker.className = 'unit-marker';
-  marker.style.backgroundColor = def.color + '44';
-  marker.style.borderColor = def.color;
-  marker.style.left = `${start.x*SZ+14}px`;
-  marker.style.top  = `${start.y*SZ+14}px`;
-  mapSurface.appendChild(marker);
-  setTimeout(() => { marker.style.left=`${end.x*SZ+14}px`; marker.style.top=`${end.y*SZ+14}px`; }, 80);
-  setTimeout(() => marker.parentNode?.removeChild(marker), 1100);
-
-  flightPath.forEach(sec => {
-    if (payload === 'retardant') { sec.hasRetardant = true; sec.el.classList.add('has-retardant'); }
-    else if (sec.state === 'burning') { sec.state = 'contained'; sec.el.className = 'sector state-contained'; }
+function doFltDrop(){
+  fltDraw=false;
+  sectors.forEach(s=>s.el.classList.remove('s-flightpath'));
+  if(!fltPath.length)return;
+  const pl=document.getElementById('payload').value;
+  const s0=fltPath[0],se=fltPath[fltPath.length-1];
+  const mk=document.createElement('div');
+  mk.className='unit-marker';
+  mk.style.cssText=`background:#a78bfa44;border-color:#a78bfa;color:#a78bfa;left:${s0.x*SZ+14+16}px;top:${s0.y*SZ+14+16}px;transition:left .9s ease,top .9s ease;`;
+  ms.appendChild(mk);
+  setTimeout(()=>{mk.style.left=`${se.x*SZ+14+16}px`;mk.style.top=`${se.y*SZ+14+16}px`;},60);
+  setTimeout(()=>mk.parentNode?.removeChild(mk),1200);
+  fltPath.forEach(sec=>{
+    if(pl==='retardant'){sec.ret=true;sec.el.classList.add('s-retardant');}
+    else if(sec.state==='burning'){sec.state='contained';sec.el.className='sector s-contained'+(sec.ret?' s-retardant':'');}
   });
-  pushLog(`✈ Air Tanker deployed <strong style="color:#a78bfa">${payload.toUpperCase()}</strong> along ${flightPath.length}-sector path.`, payload === 'retardant' ? '' : 'success');
-  flightPath = []; flightStart = null;
+  log(`✈ Air Tanker: ${pl.toUpperCase()} along ${fltPath.length}-sector path.`,pl==='retardant'?'hi':'ok');
+  fltPath=[];fltStart=null;
 }
 
-// Main game loop
-setInterval(() => {
-  const cmds = units.filter(u => u.type === 'commander');
-  const burn = [], contain = [], line = [];
+// GAME LOOP
+setInterval(()=>{
+  const cmds=units.filter(u=>u.type==='commander');
+  const toBurn=[],toCont=[],toLine=[];
 
-  // Move units & act
-  for (const u of units) {
-    if (u.type === 'commander') continue;
-    const dx = Math.sign(u.targetX - u.x), dy = Math.sign(u.targetY - u.y);
-    const boosted = cmds.some(c => Math.hypot(c.x-u.x,c.y-u.y) <= 8);
-    if ((dx||dy) && Math.random() > (boosted ? 0.05 : 0.35)) {
-      u.x += dx; u.y += dy;
-      u.marker.style.left = `${u.x*SZ+14}px`;
-      u.marker.style.top  = `${u.y*SZ+14}px`;
-      if (u.ring) { u.ring.style.left=`${u.x*SZ+14}px`; u.ring.style.top=`${u.y*SZ+14}px`; }
+  for(const u of units){
+    if(u.type==='commander') continue;
+    const dx=Math.sign(u.tx-u.x),dy=Math.sign(u.ty-u.y);
+    const boosted=cmds.some(c=>Math.hypot(c.x-u.x,c.y-u.y)<=8);
+    if((dx||dy)&&Math.random()>(boosted?.05:.35)){
+      u.x+=dx;u.y+=dy;
+      const px=u.x*SZ+14+16,py=u.y*SZ+14+16;
+      u.mk.style.left=px+'px';u.mk.style.top=py+'px';
+      if(u.ring){u.ring.style.left=px+'px';u.ring.style.top=py+'px';}
     }
-    let suppressed = false;
-    for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++) {
-      const t = getSector(u.x+i, u.y+j); if (!t) continue;
-      if (['striker','tanker','helicopter'].includes(u.type) && t.state==='burning') { contain.push(t); suppressed=true; }
-      if (u.type==='dozer' && t.state==='unburnt') line.push(t);
+    let sup=false;
+    for(let i=-1;i<=1;i++) for(let j=-1;j<=1;j++){
+      const t=getSec(u.x+i,u.y+j); if(!t) continue;
+      if(['striker','tanker','helicopter'].includes(u.type)&&t.state==='burning'){toCont.push(t);sup=true;}
+      if(u.type==='dozer'&&t.state==='unburnt') toLine.push(t);
     }
-    if (!suppressed && u.x===u.targetX && u.y===u.targetY && u.type!=='dozer') {
-      const fires = sectors.filter(s=>s.state==='burning');
-      if (fires.length) {
-        const cf = fires.reduce((a,b)=>Math.hypot(b.x-u.x,b.y-u.y)<Math.hypot(a.x-u.x,a.y-u.y)?b:a);
-        if (Math.hypot(cf.x-u.x,cf.y-u.y)<20) { u.targetX=cf.x; u.targetY=cf.y; }
+    if(!sup&&u.x===u.tx&&u.y===u.ty&&u.type!=='dozer'){
+      const fires=sectors.filter(s=>s.state==='burning');
+      if(fires.length){
+        const cf=fires.reduce((a,b)=>Math.hypot(b.x-u.x,b.y-u.y)<Math.hypot(a.x-u.x,a.y-u.y)?b:a);
+        if(Math.hypot(cf.x-u.x,cf.y-u.y)<22){u.tx=cf.x;u.ty=cf.y;}
       }
     }
   }
 
   // Wind-influenced spread
-  const ws = parseInt(document.getElementById('windSpeed').value);
-  const wd = parseInt(document.getElementById('windDir').value) * Math.PI / 180;
-  const wdx = Math.sin(wd), wdy = -Math.cos(wd);
-  const baseChance = 0.10 + (ws / 100) * 0.12;
-  const temp = parseInt(document.getElementById('temperature').value);
-  const tempMod = (temp - 25) / 100;
+  const wsp=+document.getElementById('ws').value;
+  const wdir=+document.getElementById('wd').value*Math.PI/180;
+  const wdx=Math.sin(wdir),wdy=-Math.cos(wdir);
+  const base=0.09+(wsp/100)*0.13;
+  const tmod=(+document.getElementById('tp').value-25)/120;
 
-  for (const sec of sectors) {
-    if (sec.state !== 'burning') continue;
-    if (Math.random() > 0.992) { contain.push(sec); continue; }
-    const neighbors = [
-      { s: getSector(sec.x+1,sec.y), wx:1,wy:0 },
-      { s: getSector(sec.x-1,sec.y), wx:-1,wy:0 },
-      { s: getSector(sec.x,sec.y+1), wx:0,wy:1 },
-      { s: getSector(sec.x,sec.y-1), wx:0,wy:-1 },
-    ];
-    for (const {s,wx,wy} of neighbors) {
-      if (!s || s.state !== 'unburnt') continue;
-      const windBonus = (wx*wdx + wy*wdy) * ws * 0.0012;
-      let chance = s.hasRetardant ? 0.01 : Math.max(0.02, baseChance + windBonus + tempMod);
-      if (Math.random() < chance) burn.push(s);
+  for(const sec of sectors){
+    if(sec.state!=='burning') continue;
+    if(Math.random()>.992){toCont.push(sec);continue;}
+    const nbs=[{s:getSec(sec.x+1,sec.y),wx:1,wy:0},{s:getSec(sec.x-1,sec.y),wx:-1,wy:0},
+               {s:getSec(sec.x,sec.y+1),wx:0,wy:1},{s:getSec(sec.x,sec.y-1),wx:0,wy:-1}];
+    for(const {s,wx,wy} of nbs){
+      if(!s||s.state!=='unburnt') continue;
+      const wb=(wx*wdx+wy*wdy)*wsp*.0013;
+      const ch=s.ret?.01:Math.max(.015,base+wb+tmod);
+      if(Math.random()<ch) toBurn.push(s);
     }
   }
 
-  for (const s of burn) if (s.state==='unburnt') { s.state='burning'; s.el.className='sector state-burning'+(s.hasRetardant?' has-retardant':''); }
-  for (const s of contain) { s.state='contained'; s.el.className='sector state-contained'+(s.hasRetardant?' has-retardant':''); }
-  for (const s of line) if (s.state==='unburnt') { s.state='fireline'; s.el.className='sector state-fireline'; }
+  for(const s of toBurn) if(s.state==='unburnt'){s.state='burning';s.el.className='sector s-burning'+(s.ret?' s-retardant':'');}
+  for(const s of toCont){s.state='contained';s.el.className='sector s-contained'+(s.ret?' s-retardant':'');}
+  for(const s of toLine) if(s.state==='unburnt'){s.state='fireline';s.el.className='sector s-fireline';}
 
-  const totalBurning = sectors.filter(s=>s.state==='burning').length;
-  const totalContained = sectors.filter(s=>s.state==='contained').length;
-  document.getElementById('burnArea').textContent = totalBurning.toLocaleString();
-  document.getElementById('containedPct').textContent = totalContained.toLocaleString();
+  const nb=sectors.filter(s=>s.state==='burning').length;
+  const nc=sectors.filter(s=>s.state==='contained').length;
+  document.getElementById('sBurn').textContent=nb.toLocaleString();
+  document.getElementById('sCont').textContent=nc.toLocaleString();
 
-  // Update FDI
-  const fdi = document.getElementById('fdiDisplay');
-  const ws2 = parseInt(document.getElementById('windSpeed').value);
-  const t2 = parseInt(document.getElementById('temperature').value);
-  const score = ws2 * 0.5 + (t2 - 15) * 1.5;
-  if (score > 55) { fdi.textContent = 'CATASTROPHIC'; fdi.style.color = '#ef4444'; }
-  else if (score > 40) { fdi.textContent = 'EXTREME'; fdi.style.color = '#f97316'; }
-  else if (score > 28) { fdi.textContent = 'SEVERE'; fdi.style.color = '#f59e0b'; }
-  else if (score > 16) { fdi.textContent = 'HIGH'; fdi.style.color = '#eab308'; }
-  else { fdi.textContent = 'MODERATE'; fdi.style.color = '#10b981'; }
+  const fdi=document.getElementById('fdiVal');
+  const sc=wsp*.5+(+document.getElementById('tp').value-15)*1.5;
+  if(sc>55){fdi.textContent='CATASTROPHIC';fdi.style.color='#ef4444';}
+  else if(sc>40){fdi.textContent='EXTREME';fdi.style.color='#f97316';}
+  else if(sc>28){fdi.textContent='SEVERE';fdi.style.color='#f59e0b';}
+  else if(sc>16){fdi.textContent='HIGH';fdi.style.color='#eab308';}
+  else{fdi.textContent='MODERATE';fdi.style.color='#10b981';}
 
-  updateMinimap();
-}, 650);
+  drawMM();
+},650);
 
-// (minimap init moved to top of script)
+// MINIMAP
+function drawMM(){
+  mmX.clearRect(0,0,150,150);
+  mmX.fillStyle='#020508';mmX.fillRect(0,0,150,150);
+  const sc=150/GRID;
+  for(const s of sectors){
+    let c;
+    if(s.state==='burning')c='#ff4500';
+    else if(s.state==='contained')c='#065f46';
+    else if(s.state==='water')c='#1e3a8a';
+    else if(s.state==='fireline')c='#854d0e';
+    else if(s.state==='staging')c='#334155';
+    else if(s.state==='burnt')c='#0d0f14';
+    else c='#091209';
+    mmX.fillStyle=c;
+    mmX.fillRect(s.x*sc,s.y*sc,sc+.5,sc+.5);
+  }
+  for(const u of units){
+    mmX.fillStyle=UDEFS[u.type]?.color||'#fff';
+    mmX.beginPath();mmX.arc(u.x*sc+sc/2,u.y*sc+sc/2,2,0,Math.PI*2);mmX.fill();
+  }
+}
 
-// Sliders
-['windSpeed','windDir','temperature'].forEach(id => {
-  const s = document.getElementById(id);
-  const map = { windSpeed:'windSpeedVal', windDir:'windDirVal', temperature:'tempVal' };
-  s.addEventListener('input', () => { document.getElementById(map[id]).textContent = s.value; });
+// SLIDERS
+[['ws','wsV'],['wd','wdV'],['tp','tV']].forEach(([sid,vid])=>{
+  document.getElementById(sid).addEventListener('input',()=>{
+    document.getElementById(vid).textContent=document.getElementById(sid).value;
+  });
 });
 
 rebuildRoster();
-updateMinimap();
+drawMM();
 </script>
 </body>
 </html>
