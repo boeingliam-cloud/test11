@@ -1,690 +1,1066 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>INCIDENT COMMANDER: AUSTRALIA</title>
-<script src="https://cdn.tailwindcss.com"></script>
-
 <style>
-  html, body {
-    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-    background-color: #020406;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  }
-
-  .map-viewport {
-    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
-    overflow: hidden; cursor: grab;
-  }
-  .map-viewport:active { cursor: grabbing; }
-
-  /* Expanded 90x90 High-Performance Tactical Grid Surface */
-  #map-surface {
-    position: absolute; transform-origin: center center; display: grid;
-    grid-template-columns: repeat(90, 28px);
-    grid-template-rows: repeat(90, 28px);
-    gap: 1px; background-color: rgba(255, 255, 255, 0.01);
-    padding: 30px; user-select: none; will-change: transform;
-  }
-
-  /* Advanced Sector Topography Style Shaders */
-  .sector {
-    width: 28px; height: 28px; border-radius: 4px;
-    transition: background-color 0.25s ease, box-shadow 0.2s ease;
-    position: relative;
-  }
-  
-  .state-unburnt   { background: linear-gradient(135deg, #122612 0%, #0d1c0d 100%); border: 1px solid rgba(255,255,255,0.01); }
-  .state-water     { background: linear-gradient(135deg, #1d4ed8 0%, #172554 100%); box-shadow: inset 0 0 8px rgba(0,0,0,0.7); }
-  .state-contained { background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); border: 1px solid #14b8a6; }
-  .state-burnt     { background: linear-gradient(135deg, #070a10 0%, #0f172a 100%); border: 1px solid #1e293b; }
-  .state-staging   { background: linear-gradient(135deg, #334155 0%, #1e293b 100%); border: 2px dashed #64748b; }
-  .state-fireline  { background: linear-gradient(135deg, #78350f 0%, #451a03 100%); border: 1px solid #b45309; box-shadow: inset 0 0 4px rgba(0,0,0,0.5); }
-  
-  .state-burning   { 
-    background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%);
-    animation: pulse-fire-glow 0.4s infinite alternate; box-shadow: 0 0 14px #ea580c;
-  }
-
-  .state-flightpath-target::after {
-    content: ''; position: absolute; inset: 0; background: rgba(192, 132, 252, 0.35);
-    border: 2px dashed #c084fc; border-radius: 4px; z-index: 10; pointer-events: none;
-  }
-
-  .has-retardant::before {
-    content: ''; position: absolute; inset: 2px; border: 2px solid #db2777;
-    background: rgba(219, 39, 119, 0.2); border-radius: 3px; pointer-events: none; z-index: 5;
-  }
-
-  @keyframes pulse-fire-glow {
-    0% { transform: scale(0.92); filter: brightness(0.95); }
-    100% { transform: scale(1.06); filter: brightness(1.35); z-index: 4; }
-  }
-
-  /* High-Visibility Custom Unit Assets Markers */
-  .unit-marker {
-    position: absolute; width: 20px; height: 20px; border-radius: 50%;
-    border: 2px solid #ffffff; transform: translate(-50%, -50%);
-    transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1), top 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 50; box-shadow: 0 0 14px rgba(255,255,255,0.5);
-    pointer-events: none;
-  }
-
-  /* Command Unit Radius Ring Overlay */
-  .command-radius-ring {
-    position: absolute; border: 2px dashed #facc15; border-radius: 50%;
-    background: rgba(250, 204, 21, 0.04); transform: translate(-50%, -50%);
-    pointer-events: none; z-index: 30; transition: left 0.6s ease, top 0.6s ease;
-  }
-
-  .glass-panel {
-    backdrop-filter: blur(24px); background: rgba(6, 10, 18, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85);
-  }
-
-  .hud-amber { color: #f59e0b; text-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
-  input[type="range"] { width: 100%; accent-color: #f59e0b; cursor: pointer; }
-
-  .unit-btn {
-    background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .unit-btn:hover { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.12); }
-  .unit-btn.active { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); box-shadow: inset 0 0 8px rgba(245,158,11,0.05); }
-
-  .custom-scroll::-webkit-scrollbar { width: 4px; }
-  .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-
-  .ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-  .ui-interactive { pointer-events: auto; }
+  /* Embedded font fallbacks for local file use */
+  @import url('data:text/css,');
 </style>
+<style id="font-overrides">
+  /* Will be replaced by JS if fonts load, otherwise use fallbacks */
+</style>
+<style>
+:root {
+  --bg: #05080f;
+  --panel: rgba(7,12,22,0.97);
+  --border: rgba(255,255,255,0.07);
+  --border-accent: rgba(245,158,11,0.4);
+  --amber: #f59e0b;
+  --amber-dim: #92600a;
+  --cyan: #22d3ee;
+  --red: #ef4444;
+  --green: #10b981;
+  --purple: #a78bfa;
+  --orange: #f97316;
+  --text: #cbd5e1;
+  --text-muted: #475569;
+  --text-bright: #f1f5f9;
+  --fire1: #ff4500;
+  --fire2: #ff8c00;
+  --scan-line: rgba(255,255,255,0.012);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg);
+  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
+  color: var(--text);
+}
+
+/* CRT scan-line overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan-line) 2px, var(--scan-line) 4px);
+}
+
+/* Vignette */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 9998; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.7) 100%);
+}
+
+/* ── MAP ── */
+.map-viewport {
+  position: absolute; inset: 0; z-index: 1;
+  overflow: hidden; cursor: crosshair;
+}
+.map-viewport:active { cursor: grabbing; }
+
+#map-surface {
+  position: absolute; transform-origin: 0 0; user-select: none;
+  will-change: transform;
+  display: grid;
+  grid-template-columns: repeat(90, 28px);
+  grid-template-rows: repeat(90, 28px);
+  gap: 1px;
+  background: #030609;
+  padding: 20px;
+}
+
+.sector {
+  width: 28px; height: 28px; border-radius: 3px;
+  position: relative; transition: background 0.3s ease;
+}
+
+.state-unburnt { background: #0a140a; border: 1px solid #0e1a0e; }
+.state-water {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  border: 1px solid #3b82f6;
+  box-shadow: inset 0 0 10px rgba(59,130,246,0.3);
+}
+.state-contained {
+  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+  border: 1px solid #10b981;
+  box-shadow: inset 0 0 6px rgba(16,185,129,0.2);
+}
+.state-burnt {
+  background: #06070a;
+  border: 1px solid #1e293b;
+}
+.state-staging {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 2px dashed #475569;
+}
+.state-fireline {
+  background: linear-gradient(135deg, #5c3a0a 0%, #3b2007 100%);
+  border: 1px solid #92400e;
+  box-shadow: inset 0 0 4px rgba(146,64,14,0.5);
+}
+.state-burning {
+  background: radial-gradient(ellipse at center, #ff6b00 0%, #c2290a 60%, #7f1d1d 100%);
+  border: 1px solid #ff4500;
+  animation: flicker 0.25s infinite alternate;
+  box-shadow: 0 0 10px #ff4500, 0 0 4px #ff8c00 inset;
+  z-index: 2;
+}
+@keyframes flicker {
+  0%   { transform: scale(0.93); filter: brightness(0.9); box-shadow: 0 0 8px #ff4500; }
+  100% { transform: scale(1.07); filter: brightness(1.4); box-shadow: 0 0 18px #ff6b00, 0 0 30px rgba(255,69,0,0.4); }
+}
+
+.state-flightpath-target::after {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(167,139,250,0.25);
+  border: 2px dashed #a78bfa;
+  border-radius: 3px; z-index: 10; pointer-events: none;
+  animation: path-pulse 0.5s infinite alternate;
+}
+@keyframes path-pulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+
+.has-retardant::before {
+  content: ''; position: absolute; inset: 2px;
+  border: 2px solid #ec4899;
+  background: rgba(236,72,153,0.15);
+  border-radius: 2px; pointer-events: none; z-index: 5;
+}
+
+.unit-marker {
+  position: absolute; width: 22px; height: 22px;
+  border-radius: 50%; border: 2px solid rgba(255,255,255,0.9);
+  transform: translate(-50%, -50%);
+  transition: left 0.5s cubic-bezier(0.16,1,0.3,1), top 0.5s cubic-bezier(0.16,1,0.3,1);
+  z-index: 50;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.6), 0 0 16px currentColor;
+  pointer-events: none;
+}
+.unit-marker::after {
+  content: '';
+  position: absolute; inset: 3px; border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+}
+
+.command-radius-ring {
+  position: absolute; border: 1px dashed rgba(250,204,21,0.4);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(250,204,21,0.03), transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none; z-index: 30;
+  transition: left 0.5s ease, top 0.5s ease;
+  animation: ring-pulse 3s infinite ease-in-out;
+}
+@keyframes ring-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── UI LAYER ── */
+.ui-layer {
+  position: absolute; inset: 0; z-index: 10; pointer-events: none;
+}
+.ui-int { pointer-events: auto; }
+
+/* Panel base */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 32px 64px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.panel-border-top {
+  border-top: 2px solid var(--amber);
+}
+
+/* ── TOP HEADER BAR ── */
+#header {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 72px; z-index: 100;
+  background: linear-gradient(180deg, rgba(5,8,15,0.99) 0%, rgba(5,8,15,0.94) 100%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(245,158,11,0.15), 0 8px 32px rgba(0,0,0,0.6);
+  display: flex; align-items: center; padding: 0 20px; gap: 24px;
+  pointer-events: auto;
+}
+#header::before {
+  content: '';
+  position: absolute; left: 0; bottom: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  opacity: 0.4;
+}
+
+.header-brand {
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.brand-title {
+  font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif;
+  font-size: 28px; letter-spacing: 4px;
+  color: var(--amber);
+  text-shadow: 0 0 20px rgba(245,158,11,0.5), 0 0 40px rgba(245,158,11,0.2);
+  line-height: 1;
+}
+.brand-sub {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--text-muted); text-transform: uppercase; margin-top: 2px;
+}
+
+.header-divider {
+  width: 1px; height: 40px; background: var(--border); flex-shrink: 0;
+}
+
+/* Weather controls strip */
+.weather-strip {
+  display: flex; gap: 18px; flex: 1; align-items: center;
+}
+.weather-ctrl {
+  display: flex; flex-direction: column; gap: 4px; min-width: 100px;
+}
+.ctrl-label {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 9px; color: var(--text-muted);
+  letter-spacing: 2px; text-transform: uppercase;
+  display: flex; justify-content: space-between;
+}
+.ctrl-val { color: var(--amber); font-weight: 700; }
+input[type="range"] {
+  width: 100%; height: 4px; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.08); border-radius: 2px; outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--amber);
+  box-shadow: 0 0 6px var(--amber); cursor: pointer;
+}
+
+.payload-select {
+  background: rgba(0,0,0,0.6); border: 1px solid rgba(167,139,250,0.3);
+  color: #c4b5fd; font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;
+  outline: none; width: 100%;
+}
+.payload-select:hover { border-color: rgba(167,139,250,0.6); }
+
+/* FDI badge */
+.fdi-badge {
+  display: flex; flex-direction: column; align-items: flex-end;
+  flex-shrink: 0; padding-left: 16px; border-left: 1px solid var(--border);
+}
+.fdi-label {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 8px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;
+}
+.fdi-val {
+  font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif;
+  font-size: 26px; letter-spacing: 2px; line-height: 1;
+  color: var(--red); text-shadow: 0 0 12px rgba(239,68,68,0.6);
+  animation: fdi-blink 2s infinite;
+}
+@keyframes fdi-blink {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0.4; }
+}
+
+/* ── TOOLTIP BAR ── */
+#tooltip-bar {
+  position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+  background: rgba(5,8,15,0.92); border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 20px; padding: 5px 18px;
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 10px; color: var(--text-muted);
+  letter-spacing: 1px; white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#tooltip-bar span { color: var(--amber); }
+
+/* ── LEFT PANEL ── */
+#left-panel {
+  position: absolute; top: 82px; left: 16px;
+  width: 264px; border-radius: 12px;
+  overflow: hidden;
+}
+.panel-header {
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-header-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+  animation: dot-pulse 2s infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.panel-header-title {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-size: 9px; font-weight: 700;
+  color: var(--amber); letter-spacing: 3px; text-transform: uppercase;
+}
+
+.panel-body { padding: 12px; }
+
+/* Tool buttons */
+.section-label {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 8px; color: var(--text-muted);
+  letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+
+.tool-btn {
+  border-radius: 6px; padding: 8px 6px;
+  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  cursor: pointer; border: 1px solid transparent;
+  transition: all 0.2s ease; background: rgba(255,255,255,0.02);
+  color: var(--text);
+}
+.tool-btn:hover { background: rgba(255,255,255,0.06); }
+
+.tool-ignite { border-color: rgba(249,115,22,0.3); color: #fb923c; }
+.tool-ignite:hover, .tool-ignite.active { background: rgba(249,115,22,0.15); border-color: #f97316; box-shadow: 0 0 12px rgba(249,115,22,0.2); }
+.tool-lightning { border-color: rgba(239,68,68,0.3); color: #f87171; }
+.tool-lightning:hover, .tool-lightning.active { background: rgba(239,68,68,0.15); border-color: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.2); }
+.tool-staging { border-color: rgba(100,116,139,0.3); color: #94a3b8; }
+.tool-staging:hover, .tool-staging.active { background: rgba(100,116,139,0.15); border-color: #64748b; }
+.tool-fireline { border-color: rgba(245,158,11,0.3); color: #fbbf24; }
+.tool-fireline:hover, .tool-fireline.active { background: rgba(245,158,11,0.15); border-color: var(--amber); box-shadow: 0 0 12px rgba(245,158,11,0.2); }
+
+.tool-btn.active {
+  box-shadow: 0 0 0 1px currentColor inset !important;
+}
+
+/* Unit buttons */
+.unit-btn {
+  width: 100%; text-align: left; cursor: pointer;
+  background: rgba(255,255,255,0.015); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 5px;
+  transition: all 0.2s ease; position: relative; overflow: hidden;
+}
+.unit-btn::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; border-radius: 0 2px 2px 0;
+  background: var(--unit-color, transparent);
+  transition: all 0.2s ease;
+}
+.unit-btn:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
+.unit-btn.active {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+.unit-btn.active::before { width: 4px; }
+
+.unit-name {
+  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
+  font-size: 13px; font-weight: 700; line-height: 1.2;
+  color: var(--unit-color, var(--text-bright));
+}
+.unit-desc {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 9px; color: var(--text-muted);
+  margin-top: 2px; letter-spacing: 0.5px;
+}
+.unit-icon {
+  font-size: 16px; float: right; margin-left: 8px;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* ── RIGHT PANEL ── */
+#right-panel {
+  position: absolute; top: 82px; right: 16px;
+  width: 340px; border-radius: 12px;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 100px);
+}
+
+/* Stats */
+.stat-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+}
+.stat-label {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 9px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;
+}
+.stat-val {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-size: 14px; font-weight: 700; letter-spacing: 1px;
+}
+
+/* Roster */
+.roster-area {
+  flex: 1; overflow: hidden; display: flex; flex-direction: column;
+  padding: 12px; min-height: 120px;
+}
+.roster-scroll {
+  flex: 1; overflow-y: auto; max-height: 180px;
+}
+.roster-scroll::-webkit-scrollbar { width: 3px; }
+.roster-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+.roster-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.roster-cs {
+  font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
+  font-size: 12px; font-weight: 700; flex: 1; color: var(--text-bright);
+}
+.roster-loc {
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 9px; color: var(--text-muted);
+}
+.dismiss-btn {
+  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+  color: #f87171; font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 8px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
+  letter-spacing: 1px; transition: all 0.2s ease;
+}
+.dismiss-btn:hover { background: rgba(239,68,68,0.25); border-color: #ef4444; }
+.roster-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Log */
+.log-area { padding: 12px; border-top: 1px solid var(--border); }
+.log-scroll {
+  height: 110px; overflow-y: auto;
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 9px; line-height: 1.7;
+}
+.log-scroll::-webkit-scrollbar { width: 2px; }
+.log-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); }
+.log-entry { color: var(--text-muted); }
+.log-time { color: rgba(255,255,255,0.2); }
+.log-entry.highlight { color: var(--amber); }
+.log-entry.danger { color: #f87171; }
+.log-entry.success { color: var(--green); }
+
+/* Coordinate HUD */
+#coord-hud {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(5,8,15,0.9); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 16px;
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 10px; color: var(--text-muted);
+  pointer-events: none; letter-spacing: 2px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#coord-hud span { color: var(--cyan); }
+
+/* Minimap */
+#minimap-container {
+  position: absolute; bottom: 50px; right: 16px;
+  width: 160px; height: 160px; border-radius: 8px;
+  overflow: hidden; pointer-events: none;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+#minimap {
+  width: 100%; height: 100%;
+  background: #030609;
+}
+.minimap-label {
+  position: absolute; top: 4px; left: 6px;
+  font-family: 'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  font-size: 7px; color: rgba(255,255,255,0.3);
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.minimap-viewport-rect {
+  position: absolute; border: 1px solid rgba(245,158,11,0.5);
+  pointer-events: none; transition: all 0.1s ease;
+}
+
+/* Zoom controls */
+#zoom-controls {
+  position: absolute; bottom: 50px; left: 16px;
+  display: flex; flex-direction: column; gap: 4px; pointer-events: auto;
+}
+.zoom-btn {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--border);
+  color: var(--text); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease; font-family: 'Rajdhani', 'Trebuchet MS', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+}
+.zoom-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+
+/* Custom scrollbar */
+.custom-scroll::-webkit-scrollbar { width: 3px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+</style>
+
+<script>
+// Try to load Google Fonts dynamically (works when online)
+(function() {
+  var link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Bebas+Neue&family=Orbitron:wght@400;700;900&display=swap';
+  document.head.appendChild(link);
+})();
+</script>
 </head>
 <body>
 
+<!-- MAP -->
 <div class="map-viewport" id="viewport">
   <div id="map-surface"></div>
 </div>
 
-<div class="ui-container">
-  
-  <div class="absolute top-0 left-0 right-0 h-24 glass-panel flex items-center px-6 text-slate-200 justify-between ui-interactive">
-    <div>
-      <div class="text-xl font-black hud-amber tracking-wider">INCIDENT COMMANDER: AUSTRALIA</div>
-      <div class="text-[10px] tracking-widest text-slate-400 font-bold uppercase mt-0.5">Unified Air/Ground Command Platform v5.0</div>
+<!-- MINIMAP -->
+<div id="minimap-container">
+  <canvas id="minimap"></canvas>
+  <div class="minimap-label">OVERVIEW</div>
+</div>
+
+<!-- UI LAYER -->
+<div class="ui-layer">
+
+  <!-- HEADER -->
+  <div id="header" class="ui-int">
+    <div class="header-brand">
+      <div class="brand-title">INCIDENT COMMANDER</div>
+      <div class="brand-sub">Australia · Unified Air/Ground Command Platform v5.0</div>
     </div>
 
-    <div class="grid grid-cols-5 gap-6 w-2/3 text-xs ml-12">
-      <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Speed</span><span id="windSpeedVal" class="text-amber-400 font-bold">35</span><span class="text-slate-500">km/h</span></div>
+    <div class="header-divider"></div>
+
+    <div class="weather-strip">
+      <div class="weather-ctrl">
+        <div class="ctrl-label"><span>Wind Speed</span><span class="ctrl-val" id="windSpeedVal">35</span><span style="color:var(--text-muted)"> km/h</span></div>
         <input id="windSpeed" type="range" min="0" max="100" value="35">
       </div>
-      <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Wind Direction</span><span id="windDirVal" class="text-cyan-400 font-bold">45</span><span class="text-slate-500">°</span></div>
+      <div class="weather-ctrl">
+        <div class="ctrl-label"><span>Wind Dir</span><span class="ctrl-val" id="windDirVal" style="color:var(--cyan)">45</span><span style="color:var(--text-muted)">°</span></div>
         <input id="windDir" type="range" min="0" max="360" value="45">
       </div>
-      <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Temperature</span><span id="tempVal" class="text-orange-400 font-bold">38</span><span class="text-slate-500">°C</span></div>
+      <div class="weather-ctrl">
+        <div class="ctrl-label"><span>Temp</span><span class="ctrl-val" id="tempVal" style="color:#fb923c">38</span><span style="color:var(--text-muted)">°C</span></div>
         <input id="temperature" type="range" min="15" max="45" value="38">
       </div>
-      <div>
-        <div class="flex justify-between mb-1 text-slate-400"><span>Tanker Payload Matrix</span></div>
-        <select id="airPayload" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-purple-400 font-bold outline-none">
-          <option value="water">Suppression Water</option>
-          <option value="retardant">Phos-Chek Retardant</option>
+      <div class="weather-ctrl" style="min-width:140px">
+        <div class="ctrl-label" style="margin-bottom:4px"><span>Tanker Payload</span></div>
+        <select id="airPayload" class="payload-select">
+          <option value="water">◉ Suppression Water</option>
+          <option value="retardant">◈ Phos-Chek Retardant</option>
         </select>
       </div>
-      <div class="flex flex-col justify-center items-end border-l border-slate-800 pl-6">
-        <div class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Fire Danger Index</div>
-        <div id="fdiDisplay" class="text-2xl font-black text-red-500 tracking-tighter">CATASTROPHIC</div>
+    </div>
+
+    <div class="fdi-badge">
+      <div class="fdi-label">Fire Danger Index</div>
+      <div class="fdi-val" id="fdiDisplay">CATASTROPHIC</div>
+    </div>
+  </div>
+
+  <!-- TOOLTIP BAR -->
+  <div id="tooltip-bar">
+    <span id="active-tool-label">POINT IGNITION</span> · Click map to place · Scroll to zoom · Drag to pan
+  </div>
+
+  <!-- LEFT PANEL -->
+  <div id="left-panel" class="panel panel-border-top ui-int custom-scroll" style="max-height:calc(100vh - 98px); overflow-y:auto;">
+    <div class="panel-header">
+      <div class="panel-header-dot"></div>
+      <div class="panel-header-title">Tactical Controls</div>
+    </div>
+    <div class="panel-body">
+      <div class="section-label">Engineering Tools</div>
+      <div class="tool-grid">
+        <button id="pointIgnition" class="tool-btn tool-ignite active" onclick="setToolUI('ignite', null, this, 'POINT IGNITION · Click to start fire')">🔥 Ignite</button>
+        <button id="lightningStrike" class="tool-btn tool-lightning" onclick="setToolUI('lightning', null, this, 'LIGHTNING ARRAY · Click for multi-strike')">⚡ Lightning</button>
+        <button id="stagingBuild" class="tool-btn tool-staging" onclick="setToolUI('staging', null, this, 'STAGING AREA · Click to establish base')">⛺ Staging</button>
+        <button id="firelineBuild" class="tool-btn tool-fireline" onclick="setToolUI('fireline', null, this, 'FIRELINE · Click to build earth break')">⛏ Fireline</button>
+      </div>
+
+      <div class="section-label">Resource Dispatch</div>
+
+      <div class="unit-btn" id="btn-commander" style="--unit-color:#facc15" onclick="setUnitTool('commander', this, 'SECTOR COMMANDER · Click to deploy HQ unit')">
+        <span class="unit-icon" style="color:#facc15">⭐</span>
+        <div class="unit-name">Sector Commander</div>
+        <div class="unit-desc">Boosts ground fleet in 8-cell radius</div>
+      </div>
+      <div class="unit-btn" id="btn-striker" style="--unit-color:#38bdf8" onclick="setUnitTool('striker', this, 'LIGHT STRIKER · Click to deploy rapid attack')">
+        <span class="unit-icon" style="color:#38bdf8">🚒</span>
+        <div class="unit-name">Light Attack Striker</div>
+        <div class="unit-desc">Rapid manoeuvre direct attack unit</div>
+      </div>
+      <div class="unit-btn" id="btn-tanker" style="--unit-color:#ef4444" onclick="setUnitTool('tanker', this, 'CAT-1 TANKER · Click to deploy heavy tanker')">
+        <span class="unit-icon" style="color:#ef4444">🚛</span>
+        <div class="unit-name">Heavy Tanker Cat-1</div>
+        <div class="unit-desc">High-capacity containment line</div>
+      </div>
+      <div class="unit-btn" id="btn-dozer" style="--unit-color:#ea580c" onclick="setUnitTool('dozer', this, 'BULLDOZER · Click to deploy earthbreaker')">
+        <span class="unit-icon" style="color:#ea580c">🚜</span>
+        <div class="unit-name">Heavy Plant Bulldozer</div>
+        <div class="unit-desc">Auto-carves continuous earth firebreaks</div>
+      </div>
+      <div class="unit-btn" id="btn-helicopter" style="--unit-color:#34d399" onclick="setUnitTool('helicopter', this, 'ROTARY WING · Click to deploy helo attack')">
+        <span class="unit-icon" style="color:#34d399">🚁</span>
+        <div class="unit-name">Rotary Wing Air Attack</div>
+        <div class="unit-desc">Pinpoint hover-drop water bucket</div>
+      </div>
+      <div class="unit-btn" id="btn-bomber" style="--unit-color:#a78bfa" onclick="setUnitTool('bomber', this, 'FIXED-WING TANKER · Click-drag to set flight path')">
+        <span class="unit-icon" style="color:#a78bfa">✈️</span>
+        <div class="unit-name">Fixed-Wing Air Tanker</div>
+        <div class="unit-desc">Drag to draw flight vector path</div>
       </div>
     </div>
   </div>
 
-  <div class="absolute top-28 left-1/2 -translate-x-1/2 glass-panel px-6 py-2 rounded-full text-[11px] text-slate-300 font-semibold uppercase tracking-wider border border-slate-800/80">
-    <span class="text-amber-400 font-bold">Sector Commander:</span> Spawns command circle that organizes and boosts nearby fire engines.
-  </div>
+  <!-- RIGHT PANEL -->
+  <div id="right-panel" class="panel panel-border-top ui-int">
+    <div class="panel-header">
+      <div class="panel-header-dot"></div>
+      <div class="panel-header-title">Incident Monitor</div>
+    </div>
 
-  <div class="absolute top-28 left-4 w-80 glass-panel rounded-2xl p-4 text-slate-200 space-y-3.5 ui-interactive max-h-[82vh] overflow-y-auto custom-scroll">
-    <div>
-      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Tactical Engineering Tools</div>
-      <div class="grid grid-cols-2 gap-2 text-xs">
-        <button id="pointIgnition" class="bg-orange-950/40 hover:bg-orange-900/40 border border-orange-500/30 text-orange-400 rounded-xl py-2 font-bold transition-all">Point Ignition</button>
-        <button id="lightningStrike" class="bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-400 rounded-xl py-2 font-bold transition-all">Lightning Array</button>
-      </div>
-      <div class="grid grid-cols-2 gap-2 text-xs mt-2">
-        <button id="stagingBuild" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl py-2 font-bold transition-all">Staging Area</button>
-        <button id="firelineBuild" class="bg-amber-950/40 hover:bg-amber-900/40 border border-amber-600/30 text-amber-500 rounded-xl py-2 font-bold transition-all">Create Fireline</button>
+    <!-- Stats -->
+    <div class="stat-row">
+      <div class="stat-label">🔥 Active Burning Sectors</div>
+      <div class="stat-val" id="burnArea" style="color:#f97316">0</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-label">✅ Contained Sectors</div>
+      <div class="stat-val" id="containedPct" style="color:var(--green)">0</div>
+    </div>
+    <div class="stat-row" style="border-bottom:none">
+      <div class="stat-label">📋 Deployed Assets</div>
+      <div class="stat-val" id="assetCount" style="color:var(--cyan)">0</div>
+    </div>
+
+    <!-- Roster -->
+    <div class="roster-area" style="border-top:1px solid var(--border)">
+      <div class="section-label" style="margin-bottom:8px">Active Fleet Roster</div>
+      <div class="roster-scroll" id="rosterScroll">
+        <div style="font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-muted); text-align:center; padding:20px 0; opacity:0.5;">
+          — NO ACTIVE DEPLOYMENTS —
+        </div>
       </div>
     </div>
 
-    <div>
-      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Resource Dispatch (AIIMS Team)</div>
-      <div class="grid grid-cols-1 gap-1.5 text-xs">
-        <button data-unit="commander" class="unit-btn rounded-xl p-2.5 text-left">
-          <span class="font-bold block text-yellow-400">Sector Commander (HQ)</span>
-          <span class="text-[10px] text-slate-400 block">Coordinates + Boosts ground fleet in 8-cell radius</span>
-        </button>
-        <button data-unit="striker" class="unit-btn rounded-xl p-2.5 text-left">
-          <span class="font-bold block text-sky-400">Light Attack Unit (Striker)</span>
-          <span class="text-[10px] text-slate-400 block">Rapid Maneuver Direct Attack Truck</span>
-        </button>
-        <button data-unit="tanker" class="unit-btn rounded-xl p-2.5 text-left">
-          <span class="font-bold block text-red-400">Heavy Tanker (Cat 1)</span>
-          <span class="text-[10px] text-slate-400 block">High Capacity System Containment Line</span>
-        </button>
-        <button data-unit="dozer" class="unit-btn rounded-xl p-2.5 text-left">
-          <span class="font-bold block text-amber-600">Heavy Plant (Bulldozer)</span>
-          <span class="text-[10px] text-slate-400 block">Autonomously carves continuous earth firebreaks</span>
-        </button>
-        <button data-unit="helicopter" class="unit-btn rounded-xl p-2.5 text-left">
-          <span class="font-bold block text-emerald-400">Rotary Wing Air Attack</span>
-          <span class="text-[10px] text-slate-400 block">Hover-stabilized pinpoint drop water bucket</span>
-        </button>
-        <button data-unit="bomber" class="unit-btn rounded-xl p-2.5 text-left">
-          <span class="font-bold block text-purple-400">Fixed-Wing Air Tanker</span>
-          <span class="text-[10px] text-slate-400 block">Draw click-and-drag flight vector path lines</span>
-        </button>
+    <!-- Log -->
+    <div class="log-area">
+      <div class="section-label" style="margin-bottom:6px">SICC Communications Log</div>
+      <div class="log-scroll" id="logisticsLog">
+        <div class="log-entry"><span class="log-time">[SYSTEM] </span>High-resolution 90×90 tactical grid online. Standing by.</div>
       </div>
     </div>
   </div>
 
-  <div class="absolute top-28 right-4 w-96 glass-panel rounded-2xl p-4 text-slate-200 space-y-4 ui-interactive max-h-[82vh] flex flex-col">
-    <div>
-      <div class="hud-amber font-black text-xs tracking-wider mb-2 uppercase border-b border-slate-800 pb-1">Incident Operational Monitor</div>
-      <table class="w-full text-xs">
-        <tr class="h-8 border-b border-slate-900">
-          <td class="text-slate-400">Active Out-of-Control Fire</td>
-          <td class="text-right font-mono font-bold text-orange-400" id="burnArea">0 Sectors</td>
-        </tr>
-        <tr class="h-8 border-b border-slate-900">
-          <td class="text-slate-400">Total Secured Containment</td>
-          <td class="text-right font-mono font-bold text-emerald-400" id="containedPct">0 Sectors</td>
-        </tr>
-      </table>
-    </div>
+  <!-- COORD HUD -->
+  <div id="coord-hud">GRID <span id="coordX">--</span>, <span id="coordY">--</span></div>
 
-    <div class="flex-1 flex flex-col min-h-[180px]">
-      <div class="text-[10px] uppercase tracking-widest text-slate-400 font-black mb-1.5 border-b border-slate-900 pb-1">Active Asset Fleet Roster</div>
-      <div class="overflow-y-auto flex-1 custom-scroll text-xs max-h-52">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="text-[10px] text-slate-500 border-b border-slate-900">
-              <th class="pb-1">Asset Call-Sign</th>
-              <th class="pb-1">Location</th>
-              <th class="pb-1 text-right">Demobilize</th>
-            </tr>
-          </thead>
-          <tbody id="rosterTableBody">
-            </tbody>
-        </table>
-      </div>
-    </div>
-    
-    <div>
-      <div class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1.5">SICC Communications Log</div>
-      <div id="logisticsLog" class="h-28 overflow-y-auto text-[10px] text-slate-400 space-y-1.5 pr-1 font-mono custom-scroll">
-        <div>[SYSTEM] High-Resolution 90x90 DOM-Matrix Node Network standing by.</div>
-      </div>
-    </div>
+  <!-- ZOOM -->
+  <div id="zoom-controls">
+    <button class="zoom-btn" onclick="adjustZoom(1.2)">+</button>
+    <button class="zoom-btn" onclick="adjustZoom(0.83)">−</button>
   </div>
 
 </div>
 
 <script>
-const GRID_SIZE = 90; 
-const SECTOR_SIZE = 29; // 28px + 1px spacing matrix
+const GRID = 90;
+const SZ = 29; // cell + gap
 
-const viewport = document.getElementById("viewport");
-const mapSurface = document.getElementById("map-surface");
+const viewport = document.getElementById('viewport');
+const mapSurface = document.getElementById('map-surface');
 
-// Centering and Transform State Variable Parameters
-let camX = (window.innerWidth / 2) - ((GRID_SIZE * SECTOR_SIZE) / 2);
-let camY = (window.innerHeight / 2) - ((GRID_SIZE * SECTOR_SIZE) / 2);
-let zoom = 0.45;
-
-let isDragging = false;
-let startX = 0, startY = 0;
-
-function updateSurfaceTransform() {
-  mapSurface.style.transform = `translate(${camX}px, ${camY}px) scale(${zoom})`;
+// Minimap — init BEFORE applyTransform so it's available immediately
+const minimap = document.getElementById('minimap');
+minimap.width = 160; minimap.height = 160;
+const mmCtx = minimap.getContext('2d');
+function updateMinimap() {
+  mmCtx.clearRect(0,0,160,160);
+  mmCtx.fillStyle = '#030609'; mmCtx.fillRect(0,0,160,160);
+  const scale = 160 / GRID;
+  for (const sec of sectors) {
+    let clr;
+    if (sec.state==='burning') clr='#ff4500';
+    else if (sec.state==='contained') clr='#065f46';
+    else if (sec.state==='water') clr='#1d4ed8';
+    else if (sec.state==='fireline') clr='#92400e';
+    else if (sec.state==='staging') clr='#334155';
+    else if (sec.state==='burnt') clr='#111';
+    else clr='#0a140a';
+    mmCtx.fillStyle = clr;
+    mmCtx.fillRect(sec.x*scale, sec.y*scale, scale+0.5, scale+0.5);
+  }
+  for (const u of units) {
+    mmCtx.fillStyle = UNIT_DEFS[u.type]?.color || '#fff';
+    mmCtx.beginPath();
+    mmCtx.arc(u.x*scale+scale/2, u.y*scale+scale/2, 2.5, 0, Math.PI*2);
+    mmCtx.fill();
+  }
 }
-updateSurfaceTransform();
 
-// Dragging and Zoom Controls Processing Handlers
-viewport.addEventListener("mousedown", (e) => {
+// Camera state
+let camX = 0, camY = 0, zoom = 0.42;
+let isDragging = false, startX = 0, startY = 0;
+
+function applyTransform() {
+  mapSurface.style.transform = `translate(${camX}px,${camY}px) scale(${zoom})`;
+  updateMinimap();
+}
+
+// Initial centering
+camX = window.innerWidth / 2 - (GRID * SZ * zoom) / 2;
+camY = window.innerHeight / 2 - (GRID * SZ * zoom) / 2;
+applyTransform();
+
+function adjustZoom(factor) {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const newZoom = Math.max(0.1, Math.min(5, zoom * factor));
+  camX = cx - (cx - camX) * (newZoom / zoom);
+  camY = cy - (cy - camY) * (newZoom / zoom);
+  zoom = newZoom;
+  applyTransform();
+}
+
+viewport.addEventListener('mousedown', e => {
   if (e.target === viewport || e.target === mapSurface) {
-    isDragging = true;
-    startX = e.clientX - camX;
-    startY = e.clientY - camY;
+    isDragging = true; startX = e.clientX - camX; startY = e.clientY - camY;
   }
 });
-
-window.addEventListener("mousemove", (e) => {
-  if (isDragging) {
-    camX = e.clientX - startX;
-    camY = e.clientY - startY;
-    updateSurfaceTransform();
-  }
-  if (isDrawingFlightpath) {
-    handleFlightpathDrag(e);
-  }
+window.addEventListener('mousemove', e => {
+  if (isDragging) { camX = e.clientX - startX; camY = e.clientY - startY; applyTransform(); }
+  if (isDrawingFlight) handleFlightDrag(e);
 });
-
-window.addEventListener("mouseup", () => {
-  isDragging = false;
-  if (isDrawingFlightpath) executeFlightpathDrop();
-});
-
-viewport.addEventListener("wheel", (e) => {
+window.addEventListener('mouseup', () => { isDragging = false; if (isDrawingFlight) executeFlightDrop(); });
+viewport.addEventListener('wheel', e => {
   e.preventDefault();
-  const scale = e.deltaY > 0 ? 0.88 : 1.12;
-  zoom = Math.max(0.12, Math.min(4, zoom * scale));
-  updateSurfaceTransform();
+  adjustZoom(e.deltaY > 0 ? 0.88 : 1.12);
 }, { passive: false });
 
+// State
 const sectors = [];
-const activeUnits = [];
-let nextUnitId = 1;
-
-let selectedTool = "ignite";
+const units = [];
+let nextId = 1;
+let selectedTool = 'ignite';
 let selectedUnitType = null;
 
-const unitTemplates = {
-  commander: { color: "#facc15", label: "Sector Commander" },
-  striker: { color: "#38bdf8", label: "Light Striker" },
-  tanker: { color: "#ef4444", label: "Cat-1 Tanker" },
-  dozer: { color: "#ea580c", label: "Heavy Dozer" },
-  helicopter: { color: "#34d399", label: "Air Attack Helo" },
-  bomber: { color: "#c084fc", label: "Air Tanker" }
+const UNIT_DEFS = {
+  commander:  { color: '#facc15', label: 'Sector Commander', icon: '⭐' },
+  striker:    { color: '#38bdf8', label: 'Light Striker',    icon: '🚒' },
+  tanker:     { color: '#ef4444', label: 'Cat-1 Tanker',     icon: '🚛' },
+  dozer:      { color: '#ea580c', label: 'Heavy Dozer',      icon: '🚜' },
+  helicopter: { color: '#34d399', label: 'Air Attack Helo',  icon: '🚁' },
+  bomber:     { color: '#a78bfa', label: 'Air Tanker',       icon: '✈' },
 };
 
-// Fixed Wing Flight Vector Drag Parameters
-let isDrawingFlightpath = false;
-let flightpathStartSector = null;
-let currentHoveredSector = null;
-let targetedSectorPath = [];
+// Flight path state
+let isDrawingFlight = false, flightStart = null, flightPath = [], currentHover = null;
 
-// Initialize High-Density Topography Grid
-for (let y = 0; y < GRID_SIZE; y++) {
-  for (let x = 0; x < GRID_SIZE; x++) {
-    const el = document.createElement("div");
-    el.className = "sector state-unburnt";
-    el.dataset.x = x;
-    el.dataset.y = y;
-    
-    let state = "unburnt";
-    // Large natural reservoirs mapping loops
+// Build grid
+for (let y = 0; y < GRID; y++) {
+  for (let x = 0; x < GRID; x++) {
+    const el = document.createElement('div');
+    el.className = 'sector state-unburnt';
+    el.dataset.x = x; el.dataset.y = y;
+
+    let state = 'unburnt';
     if ((x > 22 && x < 35 && y > 15 && y < 28) || (x > 60 && x < 75 && y > 52 && y < 67)) {
-      state = "water";
-      el.className = "sector state-water";
+      state = 'water'; el.className = 'sector state-water';
+    }
+    // Add some natural terrain variation
+    if (state === 'unburnt' && Math.random() < 0.006) {
+      state = 'burnt'; el.className = 'sector state-burnt';
     }
 
     mapSurface.appendChild(el);
     sectors.push({ x, y, state, el, hasRetardant: false });
 
-    // Native event listener mapping routines
-    el.addEventListener("mousedown", (e) => {
-      if (e.button === 0 && selectedTool === "unit" && selectedUnitType === "bomber") {
+    el.addEventListener('mousedown', e => {
+      if (e.button === 0 && selectedTool === 'unit' && selectedUnitType === 'bomber') {
         e.stopPropagation();
-        isDrawingFlightpath = true;
-        flightpathStartSector = { x, y };
+        isDrawingFlight = true; flightStart = { x, y };
       }
     });
-
-    el.addEventListener("mouseenter", () => {
-      if (isDrawingFlightpath) {
-        currentHoveredSector = { x, y };
-        calculateFlightpathLine();
-      }
+    el.addEventListener('mouseenter', () => {
+      currentHover = { x, y };
+      document.getElementById('coordX').textContent = x;
+      document.getElementById('coordY').textContent = y;
+      if (isDrawingFlight) calcFlightPath();
     });
-
-    el.addEventListener("click", (e) => {
-      if (selectedTool !== "unit" || selectedUnitType !== "bomber") {
-        handleSectorInteraction(x, y);
-      }
+    el.addEventListener('click', e => {
+      if (!(selectedTool === 'unit' && selectedUnitType === 'bomber'))
+        onSectorClick(x, y);
     });
   }
 }
 
 function getSector(x, y) {
-  if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return null;
-  return sectors[y * GRID_SIZE + x];
+  if (x < 0 || x >= GRID || y < 0 || y >= GRID) return null;
+  return sectors[y * GRID + x];
 }
 
-function pushLog(text) {
-  const logBox = document.getElementById("logisticsLog");
-  if (!logBox) return;
-  const timeStr = new Date().toTimeString().split(' ')[0];
-  logBox.innerHTML = `<div class="text-slate-300"><span class="text-slate-500">[${timeStr}]</span> ${text}</div>` + logBox.innerHTML;
-  logBox.scrollTop = 0;
+// Logging
+function pushLog(text, cls = '') {
+  const log = document.getElementById('logisticsLog');
+  const t = new Date().toTimeString().split(' ')[0];
+  const div = document.createElement('div');
+  div.className = `log-entry ${cls}`;
+  div.innerHTML = `<span class="log-time">[${t}]</span> ${text}`;
+  log.prepend(div);
 }
 
-// Bresenham Vector Math line processing mapping logic for Air Tanker
-function calculateFlightpathLine() {
-  if (!flightpathStartSector || !currentHoveredSector) return;
-  
-  sectors.forEach(s => s.el.classList.remove("state-flightpath-target"));
-  targetedSectorPath = [];
-
-  let x0 = flightpathStartSector.x; let y0 = flightpathStartSector.y;
-  let x1 = currentHoveredSector.x; let y1 = currentHoveredSector.y;
-
-  let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-  let dy = Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  let err = (dx > dy ? dx : -dy) / 2, e2;
-
-  while (true) {
-    const s = getSector(x0, y0);
-    if (s) {
-      s.el.classList.add("state-flightpath-target");
-      targetedSectorPath.push(s);
-    }
-    if (x0 === x1 && y0 === y1) break;
-    e2 = err;
-    if (e2 > -dx) { err -= dy; x0 += sx; }
-    if (e2 < dy) { err += dx; y0 += sy; }
-  }
+// Tool selection
+let activeToolBtn = document.getElementById('pointIgnition');
+function setToolUI(tool, unitType, btn, label) {
+  selectedTool = tool; selectedUnitType = unitType;
+  document.querySelectorAll('.tool-btn, .unit-btn').forEach(b => b.classList.remove('active'));
+  if (btn) { btn.classList.add('active'); activeToolBtn = btn; }
+  document.getElementById('active-tool-label').textContent = label || tool.toUpperCase();
+}
+function setUnitTool(type, btn, label) {
+  setToolUI('unit', type, btn, label);
 }
 
-function handleFlightpathDrag(e) {}
-
-function executeFlightpathDrop() {
-  isDrawingFlightpath = false;
-  sectors.forEach(s => s.el.classList.remove("state-flightpath-target"));
-
-  if (targetedSectorPath.length === 0) return;
-
-  const payloadType = document.getElementById("airPayload").value;
-  const startSec = targetedSectorPath[0];
-  const endSec = targetedSectorPath[targetedSectorPath.length - 1];
-
-  const marker = document.createElement("div");
-  marker.className = "unit-marker";
-  marker.style.backgroundColor = unitTemplates.bomber.color;
-  marker.style.left = `${(startSec.x * SECTOR_SIZE) + 24}px`;
-  marker.style.top = `${(startSec.y * SECTOR_SIZE) + 24}px`;
-  mapSurface.appendChild(marker);
-
-  pushLog(`Air Dispatch: Fixed-Wing Tanker deployed payload drops containing [${payloadType.toUpperCase()}] array parameters.`);
-
-  setTimeout(() => {
-    marker.style.left = `${(endSec.x * SECTOR_SIZE) + 24}px`;
-    marker.style.top = `${(endSec.y * SECTOR_SIZE) + 24}px`;
-  }, 50);
-
-  targetedSectorPath.forEach((sec) => {
-    if (payloadType === "retardant") {
-      sec.hasRetardant = true;
-      sec.el.classList.add("has-retardant");
-    } else {
-      if (sec.state === "burning") {
-        sec.state = "contained";
-        sec.el.className = "sector state-contained";
-      }
-    }
-  });
-
-  setTimeout(() => { if (marker.parentNode) marker.parentNode.removeChild(marker); }, 900);
-  targetedSectorPath = [];
-  flightpathStartSector = null;
-}
-
-function handleSectorInteraction(x, y) {
+// Sector interaction
+function onSectorClick(x, y) {
   const sec = getSector(x, y);
   if (!sec) return;
-
-  if (selectedTool === "ignite") {
-    if (sec.state === "unburnt") {
-      sec.state = "burning"; sec.el.className = "sector state-burning";
-      pushLog(`Ignition: Dynamic flame ignition source placed at sector grid [${x}, ${y}].`);
+  if (selectedTool === 'ignite') {
+    if (sec.state === 'unburnt') {
+      sec.state = 'burning'; sec.el.className = 'sector state-burning';
+      pushLog(`Ignition confirmed at [${x},${y}] — fire is spreading.`, 'danger');
     }
-  } else if (selectedTool === "lightning") {
-    pushLog(`Weather warning: High-voltage lightning discharge arrays hit matrix [${x}, ${y}].`);
-    for (let i = -2; i <= 2; i++) {
-      for (let j = -2; j <= 2; j++) {
-        const target = getSector(x + i, y + j);
-        if (target && target.state === "unburnt" && Math.random() > 0.45) {
-          target.state = "burning"; target.el.className = "sector state-burning";
-        }
-      }
+  } else if (selectedTool === 'lightning') {
+    pushLog(`⚡ Lightning array struck [${x},${y}] — multiple ignitions.`, 'danger');
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      const t = getSector(x+i, y+j);
+      if (t && t.state === 'unburnt' && Math.random() > 0.45) { t.state = 'burning'; t.el.className = 'sector state-burning'; }
     }
-  } else if (selectedTool === "staging") {
-    sec.state = "staging"; sec.el.className = "sector state-staging";
-    pushLog(`AIIMS Command: Regional operations staging base built at grid point [${x}, ${y}].`);
-  } else if (selectedTool === "fireline") {
-    if (sec.state === "unburnt") {
-      sec.state = "fireline"; sec.el.className = "sector state-fireline";
-      pushLog(`Engineering: Manual mineral earth fireline built at coordinates [${x}, ${y}].`);
-    }
-  } else if (selectedTool === "unit") {
-    if (selectedUnitType && selectedUnitType !== "bomber") {
-      deployFieldAsset(x, y, selectedUnitType);
-    } else if (!selectedUnitType && activeUnits.length > 0) {
-      // Re-route closest rotary or ground unit directly to target clicked coordinate box
-      let mobilizable = activeUnits.filter(u => u.type !== "bomber" && u.type !== "commander");
-      if (mobilizable.length > 0) {
-        let closest = mobilizable.reduce((prev, curr) => 
-          Math.hypot(curr.x - x, curr.y - y) < Math.hypot(prev.x - x, prev.y - y) ? curr : prev
-        );
-        closest.targetX = x; closest.targetY = y;
-        pushLog(`Dispatch Comm: Redirecting asset ${closest.callsign} task target parameters onto sector [${x}, ${y}].`);
-      }
-    }
+  } else if (selectedTool === 'staging') {
+    sec.state = 'staging'; sec.el.className = 'sector state-staging';
+    pushLog(`Staging base established at [${x},${y}].`);
+  } else if (selectedTool === 'fireline') {
+    if (sec.state === 'unburnt') { sec.state = 'fireline'; sec.el.className = 'sector state-fireline'; }
+  } else if (selectedTool === 'unit') {
+    if (selectedUnitType && selectedUnitType !== 'bomber') deployUnit(x, y, selectedUnitType);
+    else if (!selectedUnitType) rerouteNearest(x, y);
   }
 }
 
-function deployFieldAsset(x, y, type) {
-  const template = unitTemplates[type];
-  const marker = document.createElement("div");
-  marker.className = "unit-marker";
-  marker.style.backgroundColor = template.color;
-  marker.style.left = `${(x * SECTOR_SIZE) + 24}px`;
-  marker.style.top = `${(y * SECTOR_SIZE) + 24}px`;
-  
+// Deploy unit
+function deployUnit(x, y, type) {
+  const def = UNIT_DEFS[type];
+  const marker = document.createElement('div');
+  marker.className = 'unit-marker';
+  marker.style.backgroundColor = def.color + '44';
+  marker.style.borderColor = def.color;
+  marker.style.color = def.color;
+  marker.style.left = `${x * SZ + 14}px`;
+  marker.style.top  = `${y * SZ + 14}px`;
   mapSurface.appendChild(marker);
 
-  const uId = nextUnitId++;
-  const assetObj = {
-    id: uId, x, y, targetX: x, targetY: y, type, marker,
-    callsign: `${template.label.split(' ')[0]}-${uId}`
-  };
+  const id = nextId++;
+  const obj = { id, x, y, targetX: x, targetY: y, type, marker, callsign: `${def.label.split(' ')[0].toUpperCase()}-${String(id).padStart(2,'0')}` };
 
-  // If sector commander, add specific structural range boundaries circle element ring
-  if (type === "commander") {
-    const ring = document.createElement("div");
-    ring.className = "command-radius-ring";
-    const radiusPx = 8 * SECTOR_SIZE * 2;
-    ring.style.width = `${radiusPx}px`; ring.style.height = `${radiusPx}px`;
-    ring.style.left = `${(x * SECTOR_SIZE) + 24}px`;
-    ring.style.top = `${(y * SECTOR_SIZE) + 24}px`;
+  if (type === 'commander') {
+    const ring = document.createElement('div');
+    ring.className = 'command-radius-ring';
+    const r = 8 * SZ * 2;
+    ring.style.cssText = `width:${r}px;height:${r}px;left:${x*SZ+14}px;top:${y*SZ+14}px;`;
     mapSurface.appendChild(ring);
-    assetObj.ringElement = ring;
+    obj.ring = ring;
   }
-  
-  activeUnits.push(assetObj);
-  pushLog(`Incident Deck: Deployed asset Call-Sign [${assetObj.callsign}] down onto sector [${x}, ${y}].`);
-  rebuildRosterTable();
+
+  units.push(obj);
+  pushLog(`Deployed ${def.icon} <strong style="color:${def.color}">${obj.callsign}</strong> at sector [${x},${y}].`, 'highlight');
+  rebuildRoster();
+}
+
+function rerouteNearest(x, y) {
+  const candidates = units.filter(u => u.type !== 'bomber' && u.type !== 'commander');
+  if (!candidates.length) return;
+  const closest = candidates.reduce((a, b) => Math.hypot(b.x-x,b.y-y) < Math.hypot(a.x-x,a.y-y) ? b : a);
+  closest.targetX = x; closest.targetY = y;
+  pushLog(`Redirected ${closest.callsign} to [${x},${y}].`);
 }
 
 function dismissUnit(id) {
-  const idx = activeUnits.findIndex(u => u.id === id);
-  if (idx !== -1) {
-    const unit = activeUnits[idx];
-    if (unit.marker.parentNode) unit.marker.parentNode.removeChild(unit.marker);
-    if (unit.ringElement && unit.ringElement.parentNode) unit.ringElement.parentNode.removeChild(unit.ringElement);
-    pushLog(`Fleet Demobilize: Roster entry ${unit.callsign} removed from line operations.`);
-    activeUnits.splice(idx, 1);
-    rebuildRosterTable();
-  }
+  const i = units.findIndex(u => u.id === id);
+  if (i < 0) return;
+  const u = units[i];
+  if (u.marker.parentNode) u.marker.parentNode.removeChild(u.marker);
+  if (u.ring?.parentNode) u.ring.parentNode.removeChild(u.ring);
+  pushLog(`Demobilized ${u.callsign}.`);
+  units.splice(i, 1);
+  rebuildRoster();
 }
 
-function rebuildRosterTable() {
-  const tbody = document.getElementById("rosterTableBody");
-  if (!tbody) return; tbody.innerHTML = "";
-
-  if (activeUnits.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" class="text-slate-600 italic py-2 text-center">No active tactical deployments found.</td></tr>`;
+function rebuildRoster() {
+  const scroll = document.getElementById('rosterScroll');
+  document.getElementById('assetCount').textContent = units.length;
+  if (!units.length) {
+    scroll.innerHTML = `<div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-muted);text-align:center;padding:20px 0;opacity:0.5;">— NO ACTIVE DEPLOYMENTS —</div>`;
     return;
   }
-
-  activeUnits.forEach(u => {
-    const tr = document.createElement("tr");
-    tr.className = "border-b border-slate-900/60 h-8 items-center";
-    tr.innerHTML = `
-      <td class="font-bold text-slate-300">${u.callsign}</td>
-      <td class="font-mono text-slate-400">[${u.x}, ${u.y}]</td>
-      <td class="text-right">
-        <button onclick="dismissUnit(${u.id})" class="bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-800/40 px-2 py-0.5 rounded text-[10px] font-bold transition-all">Dismiss</button>
-      </td>
+  scroll.innerHTML = '';
+  units.forEach(u => {
+    const def = UNIT_DEFS[u.type];
+    const row = document.createElement('div');
+    row.className = 'roster-row';
+    row.innerHTML = `
+      <div class="roster-dot" style="background:${def.color};color:${def.color};box-shadow:0 0 6px ${def.color}"></div>
+      <div class="roster-cs">${def.icon} ${u.callsign}</div>
+      <div class="roster-loc">[${u.x},${u.y}]</div>
+      <button class="dismiss-btn" onclick="dismissUnit(${u.id})">DISMISS</button>
     `;
-    tbody.appendChild(tr);
+    scroll.appendChild(row);
   });
 }
 
-// Background Fire Array Engine Mechanics Core Intercom Intervals Loop
+// Flight path (Bresenham)
+function calcFlightPath() {
+  if (!flightStart || !currentHover) return;
+  sectors.forEach(s => s.el.classList.remove('state-flightpath-target'));
+  flightPath = [];
+  let x0=flightStart.x, y0=flightStart.y, x1=currentHover.x, y1=currentHover.y;
+  let dx=Math.abs(x1-x0), sx=x0<x1?1:-1, dy=Math.abs(y1-y0), sy=y0<y1?1:-1;
+  let err=(dx>dy?dx:-dy)/2;
+  while(true) {
+    const s=getSector(x0,y0); if(s){s.el.classList.add('state-flightpath-target');flightPath.push(s);}
+    if(x0===x1&&y0===y1)break;
+    let e2=err; if(e2>-dx){err-=dy;x0+=sx;} if(e2<dy){err+=dx;y0+=sy;}
+  }
+}
+function handleFlightDrag(e) {}
+function executeFlightDrop() {
+  isDrawingFlight = false;
+  sectors.forEach(s => s.el.classList.remove('state-flightpath-target'));
+  if (!flightPath.length) return;
+  const payload = document.getElementById('airPayload').value;
+  const start = flightPath[0], end = flightPath[flightPath.length-1];
+  const def = UNIT_DEFS.bomber;
+
+  const marker = document.createElement('div');
+  marker.className = 'unit-marker';
+  marker.style.backgroundColor = def.color + '44';
+  marker.style.borderColor = def.color;
+  marker.style.left = `${start.x*SZ+14}px`;
+  marker.style.top  = `${start.y*SZ+14}px`;
+  mapSurface.appendChild(marker);
+  setTimeout(() => { marker.style.left=`${end.x*SZ+14}px`; marker.style.top=`${end.y*SZ+14}px`; }, 80);
+  setTimeout(() => marker.parentNode?.removeChild(marker), 1100);
+
+  flightPath.forEach(sec => {
+    if (payload === 'retardant') { sec.hasRetardant = true; sec.el.classList.add('has-retardant'); }
+    else if (sec.state === 'burning') { sec.state = 'contained'; sec.el.className = 'sector state-contained'; }
+  });
+  pushLog(`✈ Air Tanker deployed <strong style="color:#a78bfa">${payload.toUpperCase()}</strong> along ${flightPath.length}-sector path.`, payload === 'retardant' ? '' : 'success');
+  flightPath = []; flightStart = null;
+}
+
+// Main game loop
 setInterval(() => {
-  const sectorsToBurn = [];
-  const sectorsToExtinguish = [];
-  const sectorsToLine = [];
+  const cmds = units.filter(u => u.type === 'commander');
+  const burn = [], contain = [], line = [];
 
-  // Track operational positions for Sector Commanders
-  const commandersOnField = activeUnits.filter(u => u.type === "commander");
-
-  // Process Asset Position Coordinates Navigation Updates
-  for (const unit of activeUnits) {
-    // Sector Commanders and Air Attack Helicopters hover or process paths independently
-    if (unit.type === "commander") continue;
-
-    const dx = Math.sign(unit.targetX - unit.x);
-    const dy = Math.sign(unit.targetY - unit.y);
-
-    // Calculate Commander Proximity Support Factor (Boost speed parameters if inside command zone)
-    let insideCommandZone = false;
-    for (let cmd of commandersOnField) {
-      if (Math.hypot(cmd.x - unit.x, cmd.y - unit.y) <= 8) {
-        insideCommandZone = true;
-      }
+  // Move units & act
+  for (const u of units) {
+    if (u.type === 'commander') continue;
+    const dx = Math.sign(u.targetX - u.x), dy = Math.sign(u.targetY - u.y);
+    const boosted = cmds.some(c => Math.hypot(c.x-u.x,c.y-u.y) <= 8);
+    if ((dx||dy) && Math.random() > (boosted ? 0.05 : 0.35)) {
+      u.x += dx; u.y += dy;
+      u.marker.style.left = `${u.x*SZ+14}px`;
+      u.marker.style.top  = `${u.y*SZ+14}px`;
+      if (u.ring) { u.ring.style.left=`${u.x*SZ+14}px`; u.ring.style.top=`${u.y*SZ+14}px`; }
     }
-
-    // Ground vehicle unit movement update ticks rules
-    if ((dx !== 0 || dy !== 0) && (Math.random() > (insideCommandZone ? 0.1 : 0.4))) {
-      unit.x += dx; unit.y += dy;
-      unit.marker.style.left = `${(unit.x * SECTOR_SIZE) + 24}px`;
-      unit.marker.style.top = `${(unit.y * SECTOR_SIZE) + 24}px`;
+    let suppressed = false;
+    for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++) {
+      const t = getSector(u.x+i, u.y+j); if (!t) continue;
+      if (['striker','tanker','helicopter'].includes(u.type) && t.state==='burning') { contain.push(t); suppressed=true; }
+      if (u.type==='dozer' && t.state==='unburnt') line.push(t);
     }
-
-    // Operational Task Execution Matrix Loops
-    let suppressedFlames = false;
-    for (let i = -1; i <= 1; i++) {
-      for (let j = -1; j <= 1; j++) {
-        const target = getSector(unit.x + i, unit.y + j);
-        if (!target) continue;
-
-        if (unit.type === "striker" || unit.type === "tanker" || unit.type === "helicopter") {
-          if (target.state === "burning") {
-            sectorsToExtinguish.push(target);
-            suppressedFlames = true;
-          }
-        } else if (unit.type === "dozer") {
-          if (target.state === "unburnt") {
-            sectorsToLine.push(target);
-          }
-        }
-      }
-    }
-
-    // Auto patrol routines toward active burning lines if currently idle
-    if (!suppressedFlames && unit.x === unit.targetX && unit.y === unit.targetY && unit.type !== "dozer") {
-      const activeFires = sectors.filter(s => s.state === "burning");
-      if (activeFires.length > 0) {
-        let closestFire = activeFires[0];
-        let minDist = Math.hypot(closestFire.x - unit.x, closestFire.y - unit.y);
-        for (let f of activeFires) {
-          let d = Math.hypot(f.x - unit.x, f.y - unit.y);
-          if (d < minDist) { minDist = d; closestFire = f; }
-        }
-        // Re-route target coordinates auto payload track
-        if (minDist < 18) {
-          unit.targetX = closestFire.x; unit.targetY = closestFire.y;
-        }
+    if (!suppressed && u.x===u.targetX && u.y===u.targetY && u.type!=='dozer') {
+      const fires = sectors.filter(s=>s.state==='burning');
+      if (fires.length) {
+        const cf = fires.reduce((a,b)=>Math.hypot(b.x-u.x,b.y-u.y)<Math.hypot(a.x-u.x,a.y-u.y)?b:a);
+        if (Math.hypot(cf.x-u.x,cf.y-u.y)<20) { u.targetX=cf.x; u.targetY=cf.y; }
       }
     }
   }
 
-  // Process Wildfire Spread Vectors Matrix Algorithms
+  // Wind-influenced spread
+  const ws = parseInt(document.getElementById('windSpeed').value);
+  const wd = parseInt(document.getElementById('windDir').value) * Math.PI / 180;
+  const wdx = Math.sin(wd), wdy = -Math.cos(wd);
+  const baseChance = 0.10 + (ws / 100) * 0.12;
+  const temp = parseInt(document.getElementById('temperature').value);
+  const tempMod = (temp - 25) / 100;
+
   for (const sec of sectors) {
-    if (sec.state === "burning") {
-      if (Math.random() > 0.988) {
-        sectorsToExtinguish.push(sec); continue;
-      }
-
-      const neighbors = [
-        getSector(sec.x + 1, sec.y), getSector(sec.x - 1, sec.y),
-        getSector(sec.x, sec.y + 1), getSector(sec.x, sec.y - 1)
-      ];
-
-      for (const n of neighbors) {
-        if (n && n.state === "unburnt") {
-          // Fireline and retardant drop paths drop spread probabilities to near zero
-          let spreadChance = n.hasRetardant ? 0.02 : 0.15;
-          if (Math.random() < spreadChance) {
-            sectorsToBurn.push(n);
-          }
-        }
-      }
+    if (sec.state !== 'burning') continue;
+    if (Math.random() > 0.992) { contain.push(sec); continue; }
+    const neighbors = [
+      { s: getSector(sec.x+1,sec.y), wx:1,wy:0 },
+      { s: getSector(sec.x-1,sec.y), wx:-1,wy:0 },
+      { s: getSector(sec.x,sec.y+1), wx:0,wy:1 },
+      { s: getSector(sec.x,sec.y-1), wx:0,wy:-1 },
+    ];
+    for (const {s,wx,wy} of neighbors) {
+      if (!s || s.state !== 'unburnt') continue;
+      const windBonus = (wx*wdx + wy*wdy) * ws * 0.0012;
+      let chance = s.hasRetardant ? 0.01 : Math.max(0.02, baseChance + windBonus + tempMod);
+      if (Math.random() < chance) burn.push(s);
     }
   }
 
-  // Sync execution matrices elements back cleanly onto DOM classes safely
-  for (const s of sectorsToBurn) { s.state = "burning"; s.el.className = "sector state-burning" + (s.hasRetardant ? " has-retardant" : ""); }
-  for (const s of sectorsToExtinguish) { s.state = "contained"; s.el.className = "sector state-contained" + (s.hasRetardant ? " has-retardant" : ""); }
-  for (const s of sectorsToLine) { s.state = "fireline"; s.el.className = "sector state-fireline"; }
+  for (const s of burn) if (s.state==='unburnt') { s.state='burning'; s.el.className='sector state-burning'+(s.hasRetardant?' has-retardant':''); }
+  for (const s of contain) { s.state='contained'; s.el.className='sector state-contained'+(s.hasRetardant?' has-retardant':''); }
+  for (const s of line) if (s.state==='unburnt') { s.state='fireline'; s.el.className='sector state-fireline'; }
 
-  // Global counts output updates variables
-  const totalBurning = sectors.filter(s => s.state === "burning").length;
-  const totalContained = sectors.filter(s => s.state === "contained").length;
-  
-  document.getElementById("burnArea").textContent = `${totalBurning} Sectors`;
-  document.getElementById("containedPct").textContent = `${totalContained} Sectors`;
+  const totalBurning = sectors.filter(s=>s.state==='burning').length;
+  const totalContained = sectors.filter(s=>s.state==='contained').length;
+  document.getElementById('burnArea').textContent = totalBurning.toLocaleString();
+  document.getElementById('containedPct').textContent = totalContained.toLocaleString();
 
+  // Update FDI
+  const fdi = document.getElementById('fdiDisplay');
+  const ws2 = parseInt(document.getElementById('windSpeed').value);
+  const t2 = parseInt(document.getElementById('temperature').value);
+  const score = ws2 * 0.5 + (t2 - 15) * 1.5;
+  if (score > 55) { fdi.textContent = 'CATASTROPHIC'; fdi.style.color = '#ef4444'; }
+  else if (score > 40) { fdi.textContent = 'EXTREME'; fdi.style.color = '#f97316'; }
+  else if (score > 28) { fdi.textContent = 'SEVERE'; fdi.style.color = '#f59e0b'; }
+  else if (score > 16) { fdi.textContent = 'HIGH'; fdi.style.color = '#eab308'; }
+  else { fdi.textContent = 'MODERATE'; fdi.style.color = '#10b981'; }
+
+  updateMinimap();
 }, 650);
 
-// Selection Interface Binding Routing Functions
-function setTool(toolName, unitType, buttonId) {
-  selectedTool = toolName; selectedUnitType = unitType;
-  
-  document.querySelectorAll("[data-unit]").forEach(b => b.classList.remove("active"));
-  document.getElementById("pointIgnition").classList.remove("active");
-  document.getElementById("lightningStrike").classList.remove("active");
-  document.getElementById("stagingBuild").classList.remove("active");
-  document.getElementById("firelineBuild").classList.remove("active");
-  
-  if (buttonId) document.getElementById(buttonId).classList.add("active");
-}
+// (minimap init moved to top of script)
 
-document.getElementById("pointIgnition").onclick = () => setTool("ignite", null, "pointIgnition");
-document.getElementById("lightningStrike").onclick = () => setTool("lightning", null, "lightningStrike");
-document.getElementById("stagingBuild").onclick = () => setTool("staging", null, "stagingBuild");
-document.getElementById("firelineBuild").onclick = () => setTool("fireline", null, "firelineBuild");
-
-Array.from(document.querySelectorAll("[data-unit]")).forEach(btn => {
-  btn.onclick = () => {
-    setTool("unit", btn.dataset.unit, null);
-    btn.classList.add("active");
-  };
+// Sliders
+['windSpeed','windDir','temperature'].forEach(id => {
+  const s = document.getElementById(id);
+  const map = { windSpeed:'windSpeedVal', windDir:'windDirVal', temperature:'tempVal' };
+  s.addEventListener('input', () => { document.getElementById(map[id]).textContent = s.value; });
 });
 
-function bindSlider(sliderId, displayId) {
-  const s = document.getElementById(sliderId); const d = document.getElementById(displayId);
-  if (s && d) s.addEventListener("input", () => d.textContent = s.value);
-}
-bindSlider("windSpeed", "windSpeedVal");
-bindSlider("windDir", "windDirVal");
-bindSlider("temperature", "tempVal");
-
-document.getElementById("pointIgnition").classList.add("active");
-rebuildRosterTable();
+rebuildRoster();
+updateMinimap();
 </script>
 </body>
 </html>
